@@ -96,6 +96,7 @@ SPLIT=$(ML_CONFIG_LOCAL="$TMP/config.local.php" php -r 'require "public/api/lib/
   echo json_encode([$p1["t"]===$mon19 && $c1["t"]===$mon26, $p2["t"]===$mon26 && $c2===null, weekly_label($mon19),
     weekly_prev_day($daily, strtotime("2026-10-28 12:00"))["date"], weekly_prev_day($daily, strtotime("2026-10-28 16:00"))["date"]]);')
 [ "$SPLIT" = '[true,true,"19 Oct \u2013 23 Oct 2026","2026-10-27","2026-10-28"]' ] || fail "weekly split: $SPLIT"
+[ "$(echo "$W" | j 'is_bool($d["indices"]["NIFTY"]["current"]["marketOpen"] ?? true)')" = "true" ] || fail "weekly marketOpen flag"
 echo "ok weekly"
 
 curl -s "http://127.0.0.1:8098/api/health.php" | j '$d["dataDirWritable"]' | grep -q true || fail "health"

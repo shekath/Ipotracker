@@ -30,18 +30,28 @@ function weekly_parse_chart(array $json): ?array
         'bars' => $bars,
         'price' => isset($m['regularMarketPrice']) ? (float) $m['regularMarketPrice'] : null,
         'time' => (int) ($m['regularMarketTime'] ?? time()),
+        'sessionStart' => $period ? (int) $period['start'] : null,
         'sessionEnd' => $period ? (int) $period['end'] : null,
     ];
 }
 
-/** Candles for many [key => [symbol, interval, range]] in parallel, cached for 5 minutes. */
+/** True while the regular session reported with this chart is in progress. */
+function weekly_is_open(array $chart, int $now): bool
+{
+    return isset($chart['sessionStart'], $chart['sessionEnd']) && $now >= $chart['sessionStart'] && $now <= $chart['sessionEnd'];
+}
+
+/** Candles for many [key => [symbol, interval, range]] in parallel. Cached 5 minutes, or 1 minute while the market is open. */
 function weekly_fetch(array $reqs): array
 {
     $ttl = (int) cfg('weekly_ttl', 300);
+    $liveTtl = (int) cfg('weekly_live_ttl', 60);
+    $now = time();
     $out = [];
     $missing = [];
     foreach ($reqs as $k => [$sym, $interval, $range]) {
         $c = cache_get("w:$sym:$interval", $ttl);
+        if ($c && weekly_is_open($c, $now)) $c = cache_get("w:$sym:$interval", $liveTtl);
         if ($c) $out[$k] = $c; else $missing[$k] = [$sym, $interval, $range];
     }
     foreach (cfg('upstream')['yahoo'] as $host) {
@@ -158,6 +168,7 @@ function get_weekly(?int $now = null): array
                 'high' => round(max($cur['high'], $price ?? $cur['high']), 2),
                 'low' => round(min($cur['low'], $price ?? $cur['low']), 2),
                 'asOf' => date('c', $w['time']),
+                'marketOpen' => weekly_is_open($w, $now),
             ];
         }
         $d = $data["$k:d"] ?? null;
