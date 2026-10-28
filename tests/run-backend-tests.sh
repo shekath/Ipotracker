@@ -85,6 +85,35 @@ A2=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=allus")
 [ "$(echo "$A2" | j 'count(array_unique(array_column($d["rows"],"symbol")))')" = "37" ] || fail "no duplicates"
 echo "ok screener"
 
+W=$(curl -s "http://127.0.0.1:8098/api/weekly.php")
+[ "$(echo "$W" | j 'implode(",", array_keys($d["indices"]))')" = '"NIFTY,BANKNIFTY,SENSEX"' ] || fail "weekly indices: $(echo "$W" | head -c 300)"
+[ "$(echo "$W" | j '$d["indices"]["NIFTY"]["prev"]["high"] > $d["indices"]["NIFTY"]["prev"]["low"]')" = "true" ] || fail "weekly prev high/low"
+[ "$(echo "$W" | j '$d["indices"]["NIFTY"]["prev"]["vixHigh"] >= $d["indices"]["NIFTY"]["prev"]["vixLow"]')" = "true" ] || fail "weekly vix"
+[ "$(echo "$W" | j 'is_float($d["indices"]["SENSEX"]["prevDay"]["close"]) || is_int($d["indices"]["SENSEX"]["prevDay"]["close"])')" = "true" ] || fail "weekly prevDay"
+# Week split with fixed dates (IST): Wed 28 Oct 2026 -> previous week is 19-23 Oct; Sat 31 Oct -> the week just ended.
+SPLIT=$(ML_CONFIG_LOCAL="$TMP/config.local.php" php -r 'require "public/api/lib/bootstrap.php"; require "public/api/lib/weekly.php";
+  $mon19 = strtotime("2026-10-19 09:15"); $mon26 = strtotime("2026-10-26 09:15");
+  $bars = [["t"=>$mon19,"high"=>2,"low"=>1,"close"=>1.5,"open"=>1], ["t"=>$mon26,"high"=>3,"low"=>2,"close"=>2.5,"open"=>2]];
+  [$p1, $c1] = weekly_split($bars, strtotime("2026-10-28 12:00")); [$p2, $c2] = weekly_split($bars, strtotime("2026-10-31 12:00"));
+  // Yahoo appends a live-session candle next to the current week candle: last week must still be 19-23 Oct.
+  $yb = [["t"=>strtotime("2026-10-19 00:00"),"open"=>23150.85,"high"=>23175.25,"low"=>22372,"close"=>22600], ["t"=>strtotime("2026-10-26 00:00"),"open"=>22524.4,"high"=>22829.75,"low"=>22387.35,"close"=>22749.75], ["t"=>strtotime("2026-10-28 15:31"),"open"=>22678,"high"=>22778.05,"low"=>22497.7,"close"=>22698.85]];
+  [$yp, $yc] = weekly_split($yb, strtotime("2026-10-28 21:00"));
+  if ([$yp["high"], $yp["low"], $yp["close"], $yc["high"], $yc["low"], $yc["close"]] !== [23175.25, 22372, 22600, 22829.75, 22387.35, 22698.85]) { echo "yahoo-shape ", json_encode([$yp, $yc]); exit; }
+  $daily = ["bars"=>[["t"=>strtotime("2026-10-27 09:15"),"open"=>9.0,"high"=>10.5,"low"=>9.0,"close"=>10.0], ["t"=>strtotime("2026-10-28 09:15"),"open"=>10.0,"high"=>11.5,"low"=>9.5,"close"=>11.0], ["t"=>strtotime("2026-10-28 15:31"),"open"=>11.0,"high"=>11.2,"low"=>10.8,"close"=>11.1]], "sessionEnd"=>strtotime("2026-10-28 15:30")];
+  echo json_encode([$p1["t"]===$mon19 && $c1["t"]===$mon26, $p2["t"]===$mon26 && $c2===null, weekly_label($mon19),
+    weekly_prev_day($daily, strtotime("2026-10-28 12:00"))["date"], weekly_prev_day($daily, strtotime("2026-10-28 16:00"))["date"]]);')
+ROLL=$(ML_CONFIG_LOCAL="$TMP/config.local.php" php -r 'require "public/api/lib/bootstrap.php"; require "public/api/lib/weekly.php";
+  $b = [["t"=>strtotime("2026-10-19 00:00"),"open"=>1,"high"=>23175.25,"low"=>22372,"close"=>22600], ["t"=>strtotime("2026-10-26 00:00"),"open"=>1,"high"=>22900,"low"=>22300,"close"=>22800], ["t"=>strtotime("2026-10-30 15:31"),"open"=>1,"high"=>22950,"low"=>22700,"close"=>22880]];
+  $at = fn($s) => weekly_split($b, strtotime($s))[0]["close"];
+  $d = [["t"=>strtotime("2026-12-14 00:00"),"open"=>1,"high"=>2,"low"=>1,"close"=>1.5], ["t"=>strtotime("2026-12-21 00:00"),"open"=>1,"high"=>3,"low"=>2,"close"=>2.5]];
+  $xmas = fn($s) => weekly_split($d, strtotime($s))[0]["close"];
+  echo json_encode([$at("2026-10-30 15:59"), $at("2026-10-30 16:00"), $at("2026-10-31 10:00"), weekly_last_trading_day(strtotime("2026-12-23")), $xmas("2026-12-24 15:59"), $xmas("2026-12-24 16:01"), date("Y-m-d H:i", weekly_next_rollover(strtotime("2026-10-28 21:00"))), date("Y-m-d H:i", weekly_next_rollover(strtotime("2026-10-30 16:05")))]);')
+[ "$ROLL" = '[22600,22880,22880,"2026-12-24",1.5,2.5,"2026-10-30 16:00","2026-11-06 16:00"]' ] || fail "weekly rollover: $ROLL"
+[ "$SPLIT" = '[true,true,"19 Oct \u2013 23 Oct 2026","2026-10-27","2026-10-28"]' ] || fail "weekly split: $SPLIT"
+[ "$(echo "$W" | j 'strlen($d["nextUpdate"]) > 10')" = "true" ] || fail "weekly nextUpdate"
+[ "$(echo "$W" | j 'is_bool($d["indices"]["NIFTY"]["current"]["marketOpen"] ?? true)')" = "true" ] || fail "weekly marketOpen flag"
+echo "ok weekly"
+
 curl -s "http://127.0.0.1:8098/api/health.php" | j '$d["dataDirWritable"]' | grep -q true || fail "health"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/lib/http.php")" != "500" ] || true
 echo "ALL BACKEND TESTS PASSED"

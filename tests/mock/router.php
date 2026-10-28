@@ -15,10 +15,15 @@ if (preg_match('#^/v8/finance/chart/(.+)$#', $path, $m)) {
     $now = time();
     $range = $q['range'] ?? '1d';
     $intraday = ($q['interval'] ?? '') === '5m';
-    $n = $intraday ? 75 : (['1d' => 1, '1mo' => 22, '6mo' => 126, '1y' => 250, '5y' => 260][$range] ?? 1);
-    $step = $intraday ? 300 : 86400;
-    $ts = []; $close = [];
-    for ($i = $n; $i > 0; $i--) { $ts[] = $now - $i * $step; $close[] = round($base * (1 + sin($i / 9) * 0.08), 2); }
+    $n = $intraday ? 75 : (['1d' => 1, '1mo' => 22, '3mo' => 63, '6mo' => 126, '1y' => 250, '5y' => 260][$range] ?? 1);
+    $daySec = $intraday ? 300 : 86400;
+    if (($q['interval'] ?? '') === '1wk') { $n = (int) ceil($n / 5); $daySec = 7 * 86400; } // weekly candles, last one = this week
+    $ts = []; $close = []; $open = []; $high = []; $low = [];
+    for ($i = $n; $i > 0; $i--) {
+        $ts[] = $now - ($i - 1) * $daySec - 3600;
+        $c = round($base * (1 + sin($i / 9) * 0.08), 2);
+        $close[] = $c; $open[] = round($c * 0.995, 2); $high[] = round($c * 1.02, 2); $low[] = round($c * 0.98, 2);
+    }
     echo json_encode(['chart' => ['result' => [[
         'meta' => [
             'currency' => str_ends_with($sym, '.NS') ? 'INR' : 'USD', 'symbol' => $sym,
@@ -29,7 +34,7 @@ if (preg_match('#^/v8/finance/chart/(.+)$#', $path, $m)) {
             'currentTradingPeriod' => ['regular' => ['start' => $now - 3600, 'end' => $now + 3600]],
         ],
         'timestamp' => $ts,
-        'indicators' => ['quote' => [['close' => $close]]],
+        'indicators' => ['quote' => [['close' => $close, 'open' => $open, 'high' => $high, 'low' => $low]]],
     ]], 'error' => null]]);
     exit;
 }

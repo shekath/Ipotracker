@@ -20,6 +20,7 @@ A responsive web app for researching **Indian (NSE) and US (NYSE/NASDAQ) stocks*
   - News, deals and regulatory events, each tagged with its likely impact
   - Key risks and a peer comparison
 - **IPO desk (India)**: new mainboard and SME IPOs are **added automatically when announced**, with a full listing timeline (open, close, allotment, refund, demat credit, listing), **day-wise subscription** by QIB / NII (bNII and sNII) / retail / employee category, and a **daily GMP** trend. Each issue shows with price band, issue structure (fresh vs. OFS), lot size, GMP, financials, ratios, strengths and risks. Researched issues get a scored **Apply / Neutral / Avoid** verdict with sources; auto-discovered ones get a market-signal view. Also lists the big IPO pipeline (Jio, NSE, PhonePe, Flipkart, OYO).
+- **Weekly index targets** (menu: *Weekly Index Targets*): Nifty 50, Nifty Bank and Sensex levels for the present week from last week's high, low, close and India VIX. The page shows the pivot (last week's average), whether price is above or below it, the next target, a draggable price rail for what-if prices, and the upside / downside targets at Range ÷ 4, ÷ 2 or the full range. Inputs fill automatically and can be edited; the price box starts at the *Previous week close* and *Reset to weekly close* returns to it. Enter this week's *Current close* under Edit inputs → This week so far (filled from the live feed when available), or use *Use current close*, to judge the side from the current price; the label shows which price is in use (Previous week close, Current close or What-if price).
 - **Methodology** page explaining ratings, targets and scoring.
 
 ## Live data
@@ -33,6 +34,7 @@ The site includes a small **PHP backend** in `api/`, which runs on any cPanel or
 | `api/ipos.php` | IPOs discovered automatically from NSE (mainboard and SME), with day-wise subscription by category (QIB, NII, bNII, sNII, retail, employee, shareholder), daily GMP and the T+3 listing timeline. |
 | `api/cron/update-ipos.php` | Refresh job for the IPO data. Run it from cron, or call it as a URL with a token. |
 | `api/screener.php?index=nifty50` | Index members with live price, market cap, P/E, P/B and dividend yield. Official member lists come from niftyindices.com (cached 24 h), with bundled lists in `data/indices.json` as fallback. |
+| `api/weekly.php` | Previous completed week's high / low / close for Nifty 50, Nifty Bank and Sensex plus India VIX high / low, the present week so far and the last session's close (Yahoo weekly and daily candles, cached 5 min). Rolls over automatically once the week's last close has settled (4:00 pm IST on the last trading day, which is Thursday when Friday is a holiday; `market_holidays` in `config.php` decides, so extend it each year), and returns `nextUpdate`. From 3:30 to 4:30 pm on that day the data refreshes every minute. Feeds the Weekly index targets page; `data/weekly-snapshot.json` is the fallback without PHP. |
 | `api/health.php` | Setup diagnostics: PHP version, extensions, whether the data folder is writable, and the status of each source. |
 
 How it behaves:
