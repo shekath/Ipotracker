@@ -68,6 +68,7 @@ export default function WeeklyTargets() {
     : {};
   const v = { ...loaded, ...(edits[index] ?? {}) } as Inputs;
   const def = defaultPrice(item);
+  const atDef = Number.isFinite(def) && Math.abs(v.price - def) < 0.005;
   const dayClose: DayClose | null = item?.prevDay && Number.isFinite(item.prevDay.close) ? item.prevDay : null;
   const livePx: LivePx | null = live && item?.current?.marketOpen && Number.isFinite(item.current.price) ? { price: item.current.price!, asOf: item.current.asOf } : null;
   const setField = (f: keyof Inputs, n: number) => setEdits((e) => ({ ...e, [index]: { ...(e[index] ?? {}), [f]: n } }));
@@ -136,7 +137,12 @@ export default function WeeklyTargets() {
           <section className="card card-pad">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base font-semibold">Where price sits this week</h2>
-              <Segmented size="sm" value={String(div) as '4' | '2' | '1'} onChange={(d) => setDiv(Number(d) as Divisor)} options={[{ value: '4', label: 'Range ÷ 4' }, { value: '2', label: '÷ 2' }, { value: '1', label: 'Full' }]} />
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="chip disabled:cursor-default disabled:opacity-50" disabled={atDef || !Number.isFinite(def)} onClick={resetPrice} title="Reset the price to last week's close">
+                  <RotateCcw size={13} /> Reset to weekly close <span className="num">{fmt(def)}</span>
+                </button>
+                <Segmented size="sm" value={String(div) as '4' | '2' | '1'} onChange={(d) => setDiv(Number(d) as Divisor)} options={[{ value: '4', label: 'Range ÷ 4' }, { value: '2', label: '÷ 2' }, { value: '1', label: 'Full' }]} />
+              </div>
             </div>
             <Rail r={calc.r} s={calc.s} div={div} price={v.price} week={calc.week} hl={hl} setHl={setHl} onPrice={setPrice} step={calc.step} dayClose={dayClose} livePx={livePx} />
             <MarketMarkers r={calc.r} dayClose={dayClose} livePx={livePx} liveFeed={live} onUse={(p) => usePrice(p, 'current')} />
@@ -147,7 +153,7 @@ export default function WeeklyTargets() {
               <Legend color="bg-sub" text="Last week's high / low / close" />
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rotate-45 border-2 border-fg bg-surface" />Last close</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: C.live }} />Live price (market hours)</span>
-              <span>Drag the handle or use ← → to try a price</span>
+              <span>Drag the handle (or use ← →) to try a price</span>
             </div>
           </section>
 
@@ -367,7 +373,19 @@ function Rail({ r, s, div, price, week, hl, setHl, onPrice, step, dayClose, live
     const x = ((clientX - b.left) / b.width) * W;
     return lo + clamp((x - pad) / (W - 2 * pad), 0, 1) * (hi - lo);
   };
-  const onDown = (e: RPointerEvent<SVGSVGElement>) => { e.preventDefault(); dragging.current = true; setTip(null); e.currentTarget.setPointerCapture(e.pointerId); onPrice(valueAt(e.clientX)); };
+  // Mouse: click anywhere to jump, then drag. Touch / pen: only a drag that starts on the handle moves the
+  // price, so taps and page scrolling over the rail never change it by accident.
+  const onDown = (e: RPointerEvent<SVGSVGElement>) => {
+    const b = ref.current!.getBoundingClientRect();
+    const x = ((e.clientX - b.left) / b.width) * W;
+    const onHandle = Number.isFinite(hx) && Math.abs(x - hx) <= 28;
+    if (e.pointerType !== 'mouse' && !onHandle) return;
+    e.preventDefault();
+    dragging.current = true;
+    setTip(null);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    if (e.pointerType === 'mouse') onPrice(valueAt(e.clientX));
+  };
   const onMove = (e: RPointerEvent<SVGSVGElement>) => { if (dragging.current) onPrice(valueAt(e.clientX)); };
   const onUp = () => { dragging.current = false; };
   const onKey = (e: RKeyboardEvent<SVGSVGElement>) => {
@@ -413,7 +431,7 @@ function Rail({ r, s, div, price, week, hl, setHl, onPrice, step, dayClose, live
       <svg
         ref={ref}
         viewBox={`0 0 ${W} ${H}`}
-        className="block h-[230px] w-full touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-xl"
+        className="block h-[230px] w-full touch-pan-y select-none outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-xl"
         role="slider"
         tabIndex={0}
         aria-label="Current price on the weekly range"
@@ -468,6 +486,7 @@ function Rail({ r, s, div, price, week, hl, setHl, onPrice, step, dayClose, live
         })()}
         {Number.isFinite(price) && (
           <g className="cursor-grab active:cursor-grabbing">
+            <circle cx={hx} cy={railY - 10} r={30} fill="transparent" />
             <line x1={hx} x2={hx} y1={railY - 28} y2={railY + 30} stroke={C.fg} strokeWidth={2} />
             <circle cx={hx} cy={railY} r={11} fill={C.fg} stroke={C.surface} strokeWidth={3} />
             <rect x={lx} y={railY - 50} width={lw} height={22} rx={11} fill={C.fg} />
