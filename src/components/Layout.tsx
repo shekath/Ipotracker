@@ -51,7 +51,11 @@ export function Logo() {
 
 export default function Layout() {
   const { pathname } = useLocation();
-  useEffect(() => window.scrollTo({ top: 0 }), [pathname]);
+  // Braces matter: newer browsers make scrollTo() return a Promise, and an effect
+  // that returns anything but a cleanup function crashes React on navigation.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [pathname]);
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
