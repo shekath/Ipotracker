@@ -138,7 +138,7 @@ function Marker({ at, label, cls, top }: { at: number; label: string; cls: strin
   return (
     <div className="absolute -translate-x-1/2" style={{ left: `${clampedLeft}%`, top: -4 }}>
       <div className={clsx('h-4 w-1 rounded-full ring-2 ring-surface', cls)} />
-      <div className={clsx('absolute whitespace-nowrap text-[11px] font-semibold num', clampedLeft > 85 ? 'right-0' : clampedLeft < 15 ? 'left-0' : 'left-1/2 -translate-x-1/2', top ? '-top-6' : 'top-5', cls === 'bg-brand' ? 'text-brand' : 'text-fg')}>{label}</div>
+      <div className={clsx('absolute whitespace-nowrap text-[0.6875rem] font-semibold num', clampedLeft > 85 ? 'right-0' : clampedLeft < 15 ? 'left-0' : 'left-1/2 -translate-x-1/2', top ? '-top-6' : 'top-5', cls === 'bg-brand' ? 'text-brand' : 'text-fg')}>{label}</div>
     </div>
   );
 }
@@ -230,7 +230,7 @@ function Tick({ at, label, cls, above }: { at: number; label: string; cls: strin
   return (
     <div className="absolute -translate-x-1/2" style={{ left: `${at}%`, top: -6 }}>
       <div className={clsx('h-[22px] w-1 rounded-full ring-2 ring-surface', cls)} />
-      <div className={clsx('absolute left-1/2 -translate-x-1/2 text-[10px] font-bold tracking-wider', above ? '-top-5' : 'top-7')}>{label}</div>
+      <div className={clsx('absolute left-1/2 -translate-x-1/2 text-[0.625rem] font-bold tracking-wider', above ? '-top-5' : 'top-7')}>{label}</div>
     </div>
   );
 }

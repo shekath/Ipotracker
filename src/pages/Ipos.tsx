@@ -35,7 +35,7 @@ export default function Ipos() {
       <div>
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em]">IPO desk</h1>
+            <h1 className="text-[1.625rem] font-semibold leading-tight tracking-[-0.025em]">IPO desk</h1>
             <p className="mt-1 max-w-2xl text-sm text-sub">Every Indian IPO, picked up from NSE as soon as it's announced, with live subscription by investor category, grey market premium and our apply / avoid call.</p>
           </div>
           <div className="flex flex-wrap gap-2">

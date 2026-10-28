@@ -51,7 +51,7 @@ export default function TradeTicket({ levels, price, market, fairValue }: { leve
   const row = (k: string, v: number, sub: string, tone: 'up' | 'down' | 'fg') => (
     <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 border-b border-dashed border-line py-2.5 text-sm last:border-b-0">
       <span className="text-fg2">{k}</span>
-      <b className={clsx('num text-[15px] font-semibold', tone === 'up' ? 'text-up' : tone === 'down' ? 'text-down' : 'text-fg')}>{fmtPrice(v, market)}</b>
+      <b className={clsx('num text-[0.9375rem] font-semibold', tone === 'up' ? 'text-up' : tone === 'down' ? 'text-down' : 'text-fg')}>{fmtPrice(v, market)}</b>
       <small className="col-span-2 text-xs text-sub">{sub} · <span className="num">{pct(change(price, v))}</span> from now</small>
     </div>
   );
@@ -60,8 +60,8 @@ export default function TradeTicket({ levels, price, market, fairValue }: { leve
     <div>
       <div className="rounded-[10px] bg-fg px-4 py-3.5 text-surface">
         <div className="text-xs font-medium tracking-[0.02em] text-surface/70">{z.sell ? 'SELL / EXIT AT' : 'BUY AT'}</div>
-        <div className="num mt-0.5 text-[24px] font-semibold leading-tight tracking-[-0.03em]">{fmtRange(lo, hi, market)}</div>
-        <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-surface/80"><i className={clsx('h-[7px] w-[7px] rounded-full', dot[z.tone])} />{z.text}</div>
+        <div className="num mt-0.5 text-[1.5rem] font-semibold leading-tight tracking-[-0.03em]">{fmtRange(lo, hi, market)}</div>
+        <div className="mt-1 flex items-center gap-1.5 text-[0.78125rem] text-surface/80"><i className={clsx('h-[7px] w-[7px] rounded-full', dot[z.tone])} />{z.text}</div>
       </div>
       <div className="mt-2">
         {row('Target', levels.target, levels.horizon, z.sell ? 'down' : 'up')}
@@ -74,21 +74,21 @@ export default function TradeTicket({ levels, price, market, fairValue }: { leve
         <i className="bg-down" style={{ flex: risk }} />
         <i className="bg-up" style={{ flex: reward }} />
       </div>
-      <div className="num mt-1.5 flex justify-between text-[12.5px]">
+      <div className="num mt-1.5 flex justify-between text-[0.78125rem]">
         <span className="text-down">Risk {money(risk)}</span>
         <span className="font-semibold">{rr.toFixed(1)}× reward : risk</span>
         <span className="text-up">Reward {money(reward)}</span>
       </div>
-      <p className="mt-3 text-[13px] leading-relaxed text-fg2">{levels.rationale}</p>
+      <p className="mt-3 text-[0.8125rem] leading-relaxed text-fg2">{levels.rationale}</p>
 
       <div className="mt-4 border-t border-line pt-4">
         <div className="text-xs font-medium tracking-[0.02em] text-sub">POSITION SIZE CALCULATOR</div>
         {z.sell ? (
-          <p className="mt-2 text-[13px] text-sub">This is an exit plan, so there's no new position to size. Use the zone to trim an existing holding.</p>
+          <p className="mt-2 text-[0.8125rem] text-sub">This is an exit plan, so there's no new position to size. Use the zone to trim an existing holding.</p>
         ) : (
           <div className="mt-3 grid gap-3">
             <label className="grid gap-1.5">
-              <span className="flex justify-between text-[12.5px] font-medium text-fg2">Capital <span className="text-sub">{cur}</span></span>
+              <span className="flex justify-between text-[0.78125rem] font-medium text-fg2">Capital <span className="text-sub">{cur}</span></span>
               <input
                 className="input num font-medium"
                 inputMode="numeric"
@@ -98,8 +98,8 @@ export default function TradeTicket({ levels, price, market, fairValue }: { leve
               />
             </label>
             <label className="grid gap-1.5">
-              <span className="flex justify-between text-[12.5px] font-medium text-fg2">Risk per trade <span className="num text-fg">{riskPct}%</span></span>
-              <input type="range" min={0.25} max={3} step={0.25} value={riskPct} onChange={(e) => setRiskPct(Number(e.target.value))} className="w-full accent-[rgb(var(--fg))]" aria-label="Risk per trade, percent of capital" />
+              <span className="flex justify-between text-[0.78125rem] font-medium text-fg2">Risk per trade <span className="num text-fg">{riskPct}%</span></span>
+              <input type="range" min={0.25} max={3} step={0.25} value={riskPct} onChange={(e) => setRiskPct(Number(e.target.value))} className="h-7 w-full accent-[rgb(var(--fg))]" aria-label="Risk per trade, percent of capital" />
             </label>
             {perShare > 0 ? (
               <dl className="grid grid-cols-3 gap-2">
@@ -110,12 +110,12 @@ export default function TradeTicket({ levels, price, market, fairValue }: { leve
                 ].map(([k, v, c]) => (
                   <div key={k} className="rounded-lg bg-muted px-3 py-2.5">
                     <dt className="label">{k}</dt>
-                    <dd className={clsx('num mt-0.5 truncate text-[15px] font-semibold', c)}>{v}</dd>
+                    <dd className={clsx('num mt-0.5 truncate text-[0.9375rem] font-semibold', c)}>{v}</dd>
                   </div>
                 ))}
               </dl>
             ) : (
-              <p className="text-[13px] text-down">The price is at or below the stop loss, so the plan doesn't support a new position.</p>
+              <p className="text-[0.8125rem] text-down">The price is at or below the stop loss, so the plan doesn't support a new position.</p>
             )}
             <p className="text-xs text-sub">Shares are sized so that hitting the stop loses about {riskPct}% of your capital.</p>
           </div>

@@ -18,7 +18,7 @@ const scoreLabels: Record<string, string> = { business: 'Business quality', fina
 /** Lots → amount, and the value at today's GMP. Retail bids are capped at ₹2 lakh. */
 function ApplyCalculator({ ipo }: { ipo: IpoView }) {
   const [lots, setLots] = useState(1);
-  if (!ipo.lotSize || !ipo.priceBand) return <p className="text-[13px] text-sub">The calculator appears once the lot size and price band are announced.</p>;
+  if (!ipo.lotSize || !ipo.priceBand) return <p className="text-[0.8125rem] text-sub">The calculator appears once the lot size and price band are announced.</p>;
   const lotCost = ipo.lotSize * ipo.priceBand[1];
   const maxLots = Math.max(1, Math.floor(200000 / lotCost));
   const pay = lots * lotCost;
@@ -32,7 +32,7 @@ function ApplyCalculator({ ipo }: { ipo: IpoView }) {
           <output className="num grid place-items-center border-x border-line text-sm font-semibold" aria-live="polite">{lots}</output>
           <button className="text-lg text-fg2 hover:bg-muted disabled:opacity-40" onClick={() => setLots((l) => Math.min(maxLots, l + 1))} disabled={lots >= maxLots} aria-label="More lots">+</button>
         </div>
-        <span className="text-[13px] text-sub">lot{lots > 1 ? 's' : ''} of {ipo.lotSize} · retail max {maxLots}</span>
+        <span className="text-[0.8125rem] text-sub">lot{lots > 1 ? 's' : ''} of {ipo.lotSize} · retail max {maxLots}</span>
       </div>
       <dl className="mt-3 grid grid-cols-3 gap-2">
         {[
@@ -42,7 +42,7 @@ function ApplyCalculator({ ipo }: { ipo: IpoView }) {
         ].map(([k, v, c]) => (
           <div key={k} className="rounded-lg bg-muted px-3 py-2.5">
             <dt className="label">{k}</dt>
-            <dd className={clsx('num mt-0.5 truncate text-[15px] font-semibold', c)}>{v}</dd>
+            <dd className={clsx('num mt-0.5 truncate text-[0.9375rem] font-semibold', c)}>{v}</dd>
           </div>
         ))}
       </dl>
@@ -68,8 +68,8 @@ export default function IpoDetail() {
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-1.5 text-[13px] text-sub">
-        <Link to="/ipo" className="hover:text-fg">IPO desk</Link> / <span className="truncate text-fg">{ipo.name}</span>
+      <div className="mb-3 flex items-center gap-1.5 text-[0.8125rem] text-sub">
+        <Link to="/ipo" className="py-1 hover:text-fg">IPO desk</Link> / <span className="truncate text-fg">{ipo.name}</span>
       </div>
 
       <div className="card">
@@ -79,14 +79,14 @@ export default function IpoDetail() {
             <h1 className="mt-1 text-2xl font-semibold tracking-[-0.025em]">{ipo.name}</h1>
             <div className="mt-2 flex flex-wrap gap-1.5">
               <Badge tone={statusTone[status]}>{status}{status === 'Open' && day ? ` · Day ${day}` : ''}</Badge>
-              {ipo.sector && <span className="rounded-md border border-line bg-muted px-2 py-0.5 text-[12.5px] text-fg2">{ipo.sector}</span>}
-              {c && <span className="rounded-md border border-line bg-muted px-2 py-0.5 text-[12.5px] text-fg2">{c.freshCr && c.ofsCr ? 'Fresh issue + OFS' : c.ofsCr ? 'Offer for sale' : 'Fresh issue'}</span>}
-              {ipo.live && <span className="rounded-md border border-line bg-muted px-2 py-0.5 text-[12.5px] text-fg2">Auto-tracked from NSE</span>}
+              {ipo.sector && <span className="rounded-md border border-line bg-muted px-2 py-0.5 text-[0.78125rem] text-fg2">{ipo.sector}</span>}
+              {c && <span className="rounded-md border border-line bg-muted px-2 py-0.5 text-[0.78125rem] text-fg2">{c.freshCr && c.ofsCr ? 'Fresh issue + OFS' : c.ofsCr ? 'Offer for sale' : 'Fresh issue'}</span>}
+              {ipo.live && <span className="rounded-md border border-line bg-muted px-2 py-0.5 text-[0.78125rem] text-fg2">Auto-tracked from NSE</span>}
             </div>
           </div>
           <div className="md:max-w-[300px] md:text-right">
             <Badge tone={verdictTone[ipo.verdict]} className="!h-[30px] !px-3 !text-sm">{ipo.verdict}</Badge>
-            <p className="mt-2 text-[12.5px] leading-relaxed text-sub">
+            <p className="mt-2 text-[0.78125rem] leading-relaxed text-sub">
               {ipo.basis === 'research' ? 'Based on our review of the RHP: business, financials, valuation, promoters and market signals.' : ipo.basis === 'signals' ? 'Based on market signals only (GMP, overall and QIB demand) until we review the RHP.' : 'Waiting for subscription or GMP data before giving a view.'}
               {ipo.score != null && <> Score <span className="num font-semibold text-fg">{ipo.score}/100</span>.</>}
             </p>
@@ -103,7 +103,7 @@ export default function IpoDetail() {
           ].map(([k, v], i) => (
             <div key={k} className={clsx('border-line px-4 py-3.5 sm:px-6', i % 2 === 1 && 'border-l', i >= 2 && 'border-t', 'sm:border-l-0 sm:border-t-0', i % 3 !== 0 && 'sm:border-l', i >= 3 && 'sm:border-t', 'lg:border-t-0', i % 6 !== 0 && 'lg:border-l')}>
               <dt className="label">{k}</dt>
-              <dd className="num mt-0.5 text-[15px] font-semibold">{v}</dd>
+              <dd className="num mt-0.5 text-[0.9375rem] font-semibold">{v}</dd>
             </div>
           ))}
         </dl>
@@ -111,14 +111,14 @@ export default function IpoDetail() {
 
       {ipo.timeline && (
         <div className="card mt-4">
-          <CardHead title="Timeline" sub={ipo.timeline.estimated ? 'SEBI T+3, estimated after close' : 'SEBI T+3'} right={status === 'Open' && day ? <span className="text-[13px] text-sub">Today: bidding day {day}</span> : null} />
+          <CardHead title="Timeline" sub={ipo.timeline.estimated ? 'SEBI T+3, estimated after close' : 'SEBI T+3'} right={status === 'Open' && day ? <span className="text-[0.8125rem] text-sub">Today: bidding day {day}</span> : null} />
           <div className="px-4 py-5 sm:px-5"><TimelineSteps t={ipo.timeline} /></div>
         </div>
       )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-12">
         <div className="card lg:col-span-7">
-          <CardHead title="Subscription by category" right={ipo.latestSub ? <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-up"><i className="h-[7px] w-[7px] rounded-full bg-current" />Updated {timeAgo(ipo.latestSub.time)}</span> : null} />
+          <CardHead title="Subscription by category" right={ipo.latestSub ? <span className="inline-flex items-center gap-1.5 text-[0.78125rem] font-semibold text-up"><i className="h-[7px] w-[7px] rounded-full bg-current" />Updated {timeAgo(ipo.latestSub.time)}</span> : null} />
           {ipo.subscription.length ? (
             <SubscriptionPanel rows={ipo.subscription} closeDate={ipo.closeDate} />
           ) : (
@@ -146,13 +146,13 @@ export default function IpoDetail() {
           <div className="card mt-4 grid md:grid-cols-2">
             <div className="p-4 sm:p-5">
               <div className="label !text-up">WHY APPLY</div>
-              <ul className="mt-2.5 grid gap-2.5 text-[13.5px] leading-relaxed text-fg2">
+              <ul className="mt-2.5 grid gap-2.5 text-[0.84375rem] leading-relaxed text-fg2">
                 {c.strengths.map((t) => <li key={t} className="grid grid-cols-[16px_1fr] gap-2"><Check size={16} className="mt-0.5 text-up" />{t}</li>)}
               </ul>
             </div>
             <div className="border-t border-line p-4 sm:p-5 md:border-l md:border-t-0">
               <div className="label !text-down">WATCH OUT FOR</div>
-              <ul className="mt-2.5 grid gap-2.5 text-[13.5px] leading-relaxed text-fg2">
+              <ul className="mt-2.5 grid gap-2.5 text-[0.84375rem] leading-relaxed text-fg2">
                 {c.risks.map((t) => <li key={t} className="grid grid-cols-[16px_1fr] gap-2"><X size={16} className="mt-0.5 text-down" />{t}</li>)}
               </ul>
             </div>
@@ -161,7 +161,7 @@ export default function IpoDetail() {
           <div className="mt-4 grid gap-4 lg:grid-cols-12">
             <div className="card lg:col-span-7">
               <CardHead title="Our reasoning" />
-              <p className="px-4 py-4 text-[14.5px] leading-relaxed sm:px-5">{c.rationale}</p>
+              <p className="px-4 py-4 text-[0.90625rem] leading-relaxed sm:px-5">{c.rationale}</p>
               <div className="border-t border-line px-4 py-4 sm:px-5">
                 <div className="label">BUSINESS</div>
                 <p className="mt-1.5 text-sm leading-relaxed text-fg2">{c.business}</p>

@@ -13,7 +13,7 @@ const toneCls: Record<Tone, string> = {
 
 export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span className={clsx('inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-semibold ring-1 ring-inset whitespace-nowrap', toneCls[tone], className)}>
+    <span className={clsx('inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-[0.78125rem] font-semibold ring-1 ring-inset whitespace-nowrap', toneCls[tone], className)}>
       {children}
     </span>
   );
@@ -53,7 +53,7 @@ export function ScoreRing({ score, size = 64, label }: { score: number; size?: n
       </svg>
       <div className="absolute flex flex-col items-center leading-none">
         <span className="num text-base font-bold" style={{ fontSize: size * 0.28 }}>{score}</span>
-        {label && <span className="mt-0.5 text-[10px] text-sub">{label}</span>}
+        {label && <span className="mt-0.5 text-[0.625rem] text-sub">{label}</span>}
       </div>
     </div>
   );
@@ -78,7 +78,7 @@ export function Segmented<T extends string>({ options, value, onChange, size = '
           key={o.value}
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
-          className={clsx('seg-btn', size === 'sm' ? '!h-6 !px-2 !text-xs' : '', value === o.value && 'seg-on')}
+          className={clsx('seg-btn', size === 'sm' ? 'sm:!h-6 sm:!px-2 sm:!text-xs' : '', value === o.value && 'seg-on')}
         >
           {o.label}
         </button>
@@ -135,7 +135,7 @@ export function ConvictionMeter({ level }: { level: 'High' | 'Medium' | 'Low' })
 export function CardHead({ title, sub, right }: { title: ReactNode; sub?: ReactNode; right?: ReactNode }) {
   return (
     <div className="card-head">
-      <h2 className="card-title">{title}{sub && <span className="ml-2 text-[13px] font-normal text-sub">{sub}</span>}</h2>
+      <h2 className="card-title">{title}{sub && <span className="ml-2 text-[0.8125rem] font-normal text-sub">{sub}</span>}</h2>
       {right}
     </div>
   );

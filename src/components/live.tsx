@@ -87,6 +87,7 @@ export function PriceChart({
   initialRange = '1y',
   prevClose,
   compact,
+  name = 'Price',
 }: {
   id: string;
   market: Market;
@@ -96,6 +97,8 @@ export function PriceChart({
   initialRange?: Range;
   prevClose?: number;
   compact?: boolean;
+  /** What the chart shows, for its screen-reader summary, e.g. "Reliance Industries". */
+  name?: string;
 }) {
   const [range, setRange] = useState<Range>(initialRange);
   const [on, setOn] = useState<Record<Toggle, boolean>>({ zone: true, target: true, stop: true, fair: false, ma: false });
@@ -129,6 +132,15 @@ export function PriceChart({
   }
   if (prevClose != null && intraday) refLines.push({ value: prevClose, label: `Prev close ${nf(prevClose)}`, tone: 'sub', inDomain: true });
 
+  // One-line message for screen readers: direction, latest value and where it sits against the plan.
+  const summary = (() => {
+    if (!last) return `${name} chart`;
+    const move = intraday ? (prevClose ? pct(((last - prevClose) / prevClose) * 100, 2) + ' today' : 'today') : ret != null ? `${pct(ret)} over ${rangeLabel(range)}` : rangeLabel(range);
+    let where = '';
+    if (levels?.zone) where = last < Math.min(...levels.zone) ? ', below the buy zone' : last > Math.max(...levels.zone) ? ', above the buy zone' : ', inside the buy zone';
+    return `${name} chart, ${move}, latest ${fmtPrice(last, market)}${where}`;
+  })();
+
   const fmtX = (t: number) => {
     const d = new Date(t * 1000);
     if (intraday) return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: market === 'IN' ? 'Asia/Kolkata' : 'America/New_York' });
@@ -140,9 +152,9 @@ export function PriceChart({
     <div>
       <div className={clsx('flex flex-wrap items-center justify-between gap-3', compact ? 'mb-2' : 'mb-3')}>
         {levels && available.length ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2 sm:gap-1.5">
             {available.map((k) => (
-              <button key={k} aria-pressed={on[k]} onClick={() => setOn((o) => ({ ...o, [k]: !o[k] }))} className={clsx('inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[13px] font-medium transition-colors', on[k] ? 'border-line2 text-fg' : 'border-line text-sub hover:text-fg')}>
+              <button key={k} aria-pressed={on[k]} onClick={() => setOn((o) => ({ ...o, [k]: !o[k] }))} className={clsx('inline-flex h-9 items-center gap-1.5 rounded-md border px-2.5 text-[0.8125rem] font-medium transition-colors sm:h-7', on[k] ? 'border-line2 text-fg' : 'border-line text-sub hover:text-fg')}>
                 <i className={clsx('h-2.5 w-2.5 rounded-[3px] border-[1.5px]', on[k] ? toggleMeta[k].sw : 'border-current')} />
                 {toggleMeta[k].label}
               </button>
@@ -176,7 +188,7 @@ export function PriceChart({
             refLines={refLines}
             bands={bands}
             overlay={ma}
-            ariaLabel={`Price chart, ${rangeLabel(range)}`}
+            ariaLabel={summary}
           />
         )}
       </div>
@@ -208,10 +220,10 @@ export function TimelineSteps({ t }: { t: Timeline }) {
           const done = current === -1 || i < current;
           const now = i === current;
           return (
-            <li key={s.label} className="relative pt-6 pr-2 text-[13px]">
+            <li key={s.label} className="relative pt-6 pr-2 text-[0.8125rem]">
               <span className={clsx('absolute left-0 right-0 top-[5px] h-0.5', done ? 'bg-fg' : now ? 'bg-gradient-to-r from-fg from-50% to-line to-50%' : 'bg-line')} />
               <span className={clsx('absolute left-0 top-0 h-3 w-3 rounded-full border-2', done ? 'border-fg bg-fg' : now ? 'border-brand bg-brand ring-4 ring-brand/15' : 'border-line2 bg-surface')} />
-              <b className={clsx('block text-[13.5px] font-semibold', !done && !now && 'text-fg2')}>{s.label}</b>
+              <b className={clsx('block text-[0.84375rem] font-semibold', !done && !now && 'text-fg2')}>{s.label}</b>
               <span className="text-sub">{dayName(s.date)}</span>
             </li>
           );
@@ -239,11 +251,14 @@ const order: SubCategory[] = ['qib', 'nii', 'bnii', 'snii', 'retail', 'employee'
 
 const fx = (v: number | null | undefined) => (v == null ? '—' : `${v.toFixed(2)}×`);
 
-/** Background intensity for a subscription multiple (log scale, 60× = full). */
+/**
+ * Background tint for a subscription multiple (log scale, 60× = darkest).
+ * The tint stops at 45% so the dark text stays above 8:1 in both themes.
+ */
 function heat(v: number | null | undefined) {
   if (v == null) return {};
   const a = Math.min(1, Math.log10(v + 1) / Math.log10(61));
-  return { background: `color-mix(in srgb, rgb(var(--brand)) ${Math.round(a * 85)}%, rgb(var(--surface)))`, color: a > 0.55 ? 'rgb(var(--surface))' : 'rgb(var(--fg))' };
+  return { background: `color-mix(in srgb, rgb(var(--brand)) ${Math.round(a * 45)}%, rgb(var(--surface)))`, color: 'rgb(var(--fg))' };
 }
 
 export function SubscriptionPanel({ rows, closeDate }: { rows: SubscriptionRow[]; closeDate?: string | null }) {
@@ -257,7 +272,7 @@ export function SubscriptionPanel({ rows, closeDate }: { rows: SubscriptionRow[]
           <span className="num text-4xl font-semibold tracking-[-0.04em]">{fx(total)}</span>
           <span className="text-fg2">overall · Day {rows.length}{closeDate ? ` · closes ${fmtDate(closeDate)}` : ''}</span>
         </div>
-        <p className="mt-1.5 text-[13px] text-sub">
+        <p className="mt-1.5 text-[0.8125rem] text-sub">
           {total != null && total >= 1 ? `Bids are ${total.toFixed(1)} times the shares on offer.` : 'The issue is not fully subscribed yet.'} When the retail category is heavily oversubscribed, allotment works like a lottery: one lot per winning applicant.
         </p>
       </div>
@@ -275,7 +290,7 @@ export function SubscriptionPanel({ rows, closeDate }: { rows: SubscriptionRow[]
                 <td className={clsx(['bnii', 'snii'].includes(k) && 'pl-8 text-sub')}>{subLabels[k] ?? k}</td>
                 {rows.map((r) => (
                   <td key={r.date} className="text-right">
-                    <span className="num inline-block min-w-[4.25rem] rounded-md px-2 py-1 text-right text-[13px] font-medium" style={heat(r[k])}>{fx(r[k])}</span>
+                    <span className="num inline-block min-w-[4.25rem] rounded-md px-2 py-1 text-right text-[0.8125rem] font-medium" style={heat(r[k])}>{fx(r[k])}</span>
                   </td>
                 ))}
               </tr>
@@ -301,9 +316,9 @@ export function GmpChart({ points, upper }: { points: { date: string; value: num
         const lastBar = i === data.length - 1;
         return (
           <div key={p.date} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1" title={`₹${p.value}${upper ? ` (${((p.value / upper) * 100).toFixed(1)}%)` : ''} · ${p.source}`}>
-            <span className="num text-[11.5px] font-semibold">{p.value}</span>
+            <span className="num text-[0.71875rem] font-semibold">{p.value}</span>
             <div className={clsx('w-full max-w-[28px] rounded-[3px]', p.value < 0 ? 'bg-down' : lastBar ? 'bg-up' : 'bg-up/35')} style={{ height: `${Math.max(3, h)}%` }} />
-            <span className="num truncate text-[11px] text-sub">{lastBar ? 'Latest' : fmtDate(p.date)}</span>
+            <span className="num truncate text-[0.6875rem] text-sub">{lastBar ? 'Latest' : fmtDate(p.date)}</span>
           </div>
         );
       })}

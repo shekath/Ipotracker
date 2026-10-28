@@ -87,7 +87,7 @@ export default function Stocks() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em]">Stock research</h1>
+          <h1 className="text-[1.625rem] font-semibold leading-tight tracking-[-0.025em]">Stock research</h1>
           <p className="mt-1 text-sm text-sub">Filter by market and sector. {status === 'live' ? 'Prices refresh every minute; valuation multiples re-base to the live price.' : `Showing ${STOCK_SNAPSHOT} research-snapshot prices (live feed unavailable).`}</p>
         </div>
       </div>

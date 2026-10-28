@@ -61,13 +61,13 @@ function pageList(page: number, count: number): (number | null)[] {
 }
 
 function Pagination({ page, pageCount, pageSize, total, offset, shown, onPage, onPageSize }: { page: number; pageCount: number; pageSize: number; total: number; offset: number; shown: number; onPage: (n: number) => void; onPageSize: (n: number) => void }) {
-  const btn = 'inline-flex h-8 min-w-8 items-center justify-center rounded-[7px] px-2 font-mono text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40';
+  const btn = 'inline-flex h-10 min-w-10 sm:h-8 sm:min-w-8 items-center justify-center rounded-[7px] px-2 font-mono text-[0.8125rem] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40';
   return (
     <div className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
       <div className="flex items-center gap-3 text-sm text-sub">
         <label className="flex items-center gap-2">
           Rows
- <select className="h-8 rounded-lg border border-line bg-surface px-2 text-sm font-medium text-fg focus:outline-none focus:ring-2 focus:ring-brand/40" value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))} aria-label="Rows per page">
+ <select className="h-10 rounded-lg border border-field bg-surface px-2 text-base font-medium sm:h-8 sm:text-sm text-fg focus:outline-none focus:ring-2 focus:ring-brand/40" value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))} aria-label="Rows per page">
             {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>
@@ -180,7 +180,7 @@ export default function Screener() {
   const top = [...priced].sort((a, b) => (b.changePct ?? 0) - (a.changePct ?? 0));
 
   const sortBtn = (key: SortKey, label: string) => (
-    <button className={clsx('inline-flex items-center gap-1 hover:text-fg', sort.key === key && 'text-fg')} onClick={() => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : key === 'name' ? 1 : -1 }))}>
+    <button className={clsx('inline-flex min-h-7 items-center gap-1 hover:text-fg', sort.key === key && 'text-fg')} onClick={() => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : key === 'name' ? 1 : -1 }))}>
       {label}
       {sort.key === key && (sort.dir === 1 ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
     </button>
@@ -193,7 +193,7 @@ export default function Screener() {
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em]">Index screener</h1>
+          <h1 className="text-[1.625rem] font-semibold leading-tight tracking-[-0.025em]">Index screener</h1>
           <p className="mt-1 text-sm text-sub">Every member of the major indices with live price, valuation and 52-week position. Click a researched stock for its full analysis.</p>
         </div>
       </div>
@@ -323,13 +323,13 @@ export default function Screener() {
  <div className="relative h-1 rounded-full bg-line">
                             <span className="absolute -top-1 h-3 w-[3px] -translate-x-1/2 rounded-sm bg-fg" style={{ left: `${Math.max(0, Math.min(100, pos))}%` }} />
                           </div>
-                          <div className="num mt-1 text-[11px] text-sub">{fx(r.fromHigh, 1)}% from high</div>
+                          <div className="num mt-1 text-[0.6875rem] text-sub">{fx(r.fromHigh, 1)}% from high</div>
                         </div>
                       ) : (
                         <span className="text-sub">—</span>
                       )}
                     </td>
-                    <td className="text-right">{r.research ? <Link to={`/stocks/${market}/${encodeURIComponent(r.symbol)}`}><Badge tone={ratingTone[r.research.rating]}>{r.research.rating}</Badge></Link> : <span className="text-[12.5px] text-sub">—</span>}</td>
+                    <td className="text-right">{r.research ? <Link to={`/stocks/${market}/${encodeURIComponent(r.symbol)}`}><Badge tone={ratingTone[r.research.rating]}>{r.research.rating}</Badge></Link> : <span className="text-[0.78125rem] text-sub">—</span>}</td>
                   </tr>
                 );
               })}
