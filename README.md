@@ -68,6 +68,12 @@ How it behaves:
 
 **Updating later:** run `npm run package` again and extract the zip over the existing files. `api/data/` (the IPO history) and `config.local.php` are left untouched.
 
+### Current deployment: stocks.shekathali.com
+
+The live site is in `public_html/stocks` (the `stocks.shekathali.com` subdomain). It is deployed with Hostinger's Git deploy from the `hostinger-deploy` branch, which contains only the built site.
+- **Update:** run `npm run deploy:branch` on `main`, then redeploy (hPanel → Advanced → Git → Deploy). The redeploy pulls the new build. `api/data/` and `config.local.php` are untracked, so they are kept.
+- **Cron:** `*/15 * * * * /usr/bin/php /home/u321045870/domains/shekathali.com/public_html/stocks/api/cron/update-ipos.php`
+
 ### Troubleshooting
 - **NSE source shows an error:** NSE sometimes rate-limits or blocks shared-hosting IP addresses. GMP-based discovery keeps working, and NSE usually recovers on its own. If the error persists, ask Hostinger support whether outbound requests to `www.nseindia.com` are allowed.
 - **Quotes missing:** check `health.php`. If Yahoo is blocked from your server, add a Twelve Data key.
