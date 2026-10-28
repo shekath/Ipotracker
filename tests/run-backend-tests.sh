@@ -42,7 +42,10 @@ BLS=$(echo "$I" | j 'array_values(array_filter($d["ipos"], fn($i)=>$i["symbol"]=
 [ "$(echo "$BLS" | j '$d["subscription"][0]["qib"]')" = "1.5" ] || fail "qib: $BLS"
 [ "$(echo "$BLS" | j '$d["subscription"][0]["snii"]')" = "8.4" ] || fail "snii"
 [ "$(echo "$BLS" | j '$d["subscription"][0]["bnii"]')" = "5.1" ] || fail "bnii"
-[ "$(echo "$BLS" | j '$d["subscription"][0]["retail"]')" = "4.4" ] || fail "retail derived from bids / (issue - QIB - NII): $BLS"
+[ "$(echo "$BLS" | j '$d["subscription"][0]["retail"]')" = "4.4" ] || fail "retail from the main RII row, not the 'Individuals(Other than RIIs)' sub-row: $BLS"
+[ "$(echo "$BLS" | j '$d["subscription"][0]["total"]')" = "3.9" ] || fail "total"
+TINY=$(echo "$I" | j 'array_values(array_filter($d["ipos"], fn($i)=>$i["symbol"]==="TINYSME"))[0]')
+[ "$(echo "$TINY" | j '$d["subscription"][0]["retail"]')" = "null" ] || fail "retail must stay empty when it cannot be derived sensibly: $TINY"
 [ "$(echo "$BLS" | j '$d["gmp"][0]["value"]')" = "25" ] || fail "gmp: $BLS"
 [ "$(echo "$BLS" | j '$d["priceBand"]')" = "[142,150]" ] || fail "band"
 [ "$(echo "$BLS" | j '$d["timeline"]["estimated"]')" = "true" ] || fail "timeline"
