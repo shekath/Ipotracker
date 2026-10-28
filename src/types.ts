@@ -182,3 +182,41 @@ export interface SourceStatus {
   msg: string;
   at: number;
 }
+
+// ---- Index screener ----
+
+export interface IndexDef {
+  id: string;
+  name: string;
+  market: Market;
+  exchange: string;
+  description: string;
+  csv: string | null;
+  fallback: [string, string, string | null][] | null;
+  fallbackNote?: string;
+}
+
+export interface ScreenerRow {
+  symbol: string;
+  name: string;
+  industry: string | null;
+  price: number | null;
+  changePct?: number | null;
+  mcap?: number | null;
+  pe?: number | null;
+  fpe?: number | null;
+  pb?: number | null;
+  divYield?: number | null;
+  high52?: number | null;
+  low52?: number | null;
+  volume?: number | null;
+  marketOpen?: boolean | null;
+}
+
+export interface ScreenerResult {
+  id: string;
+  asOf: number;
+  constituentsSource: string;
+  quoteSource: string | null;
+  rows: ScreenerRow[];
+}

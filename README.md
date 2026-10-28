@@ -5,6 +5,8 @@ A responsive web app for researching **Indian (NSE) and US (NYSE/NASDAQ) stocks*
 ## Features
 
 - **Live prices** for every stock (refreshed each minute), day change and a 1M–5Y price chart.
+- **India-first market tabs**: the dashboard, stock list and screener switch between 🇮🇳 India (default) and 🇺🇸 US, and the choice is remembered.
+- **Index screener**: Nifty 50, Nifty Next 50, Nifty 100, Nifty 200, Nifty Midcap 100, Sensex, Bank Nifty, Nifty IT/Pharma/Auto/FMCG, Dow 30 and US mega caps. Every member shows live price, day change, market cap, P/E, P/B, dividend yield and 52-week position, with breadth, presets (gainers, losers, near 52W high/low, value, dividend) and industry filters.
 - **Dashboard**: high-conviction picks, sector outlook (average upside to fair value), and live IPOs.
 - **Stock screener**: switch between India and US, filter by sector and rating, search, sort (upside, score, market cap, growth, ROE, P/E), card or table view, and a watchlist saved in your browser.
 - **Stock deep-dive** for each company:
@@ -30,6 +32,7 @@ The site includes a small **PHP backend** in `api/`, which runs on any cPanel or
 | `api/history.php?id=IN:TCS&range=1y` | Price history for the chart (`1mo`, `6mo`, `1y`, `5y`). |
 | `api/ipos.php` | IPOs discovered automatically from NSE (mainboard and SME), with day-wise subscription by category (QIB, NII, bNII, sNII, retail, employee, shareholder), daily GMP and the T+3 listing timeline. |
 | `api/cron/update-ipos.php` | Refresh job for the IPO data. Run it from cron, or call it as a URL with a token. |
+| `api/screener.php?index=nifty50` | Index members with live price, market cap, P/E, P/B and dividend yield. Official member lists come from niftyindices.com (cached 24 h), with bundled lists in `data/indices.json` as fallback. |
 | `api/health.php` | Setup diagnostics: PHP version, extensions, whether the data folder is writable, and the status of each source. |
 
 How it behaves:

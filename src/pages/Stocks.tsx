@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { LayoutGrid, List, Search, Star } from 'lucide-react';
 import clsx from 'clsx';
@@ -10,6 +10,7 @@ import { overallScore, ratingTone } from '../lib/scoring';
 import { useWatchlist } from '../lib/watchlist';
 import { useLiveStocks } from '../lib/live';
 import { ChangeTag, LiveDot } from '../components/live';
+import { marketTabs, useMarketPref } from '../lib/marketPref';
 import type { Market, Rating } from '../types';
 
 type SortKey = 'upside' | 'score' | 'mcap' | 'pe' | 'growth' | 'roe';
@@ -25,7 +26,12 @@ const ratings: (Rating | 'All')[] = ['All', 'Strong Buy', 'Buy', 'Accumulate', '
 
 export default function Stocks() {
   const [params, setParams] = useSearchParams();
-  const market = (params.get('market') as Market | null) ?? 'ALL';
+  const [pref, setPref] = useMarketPref();
+  const urlMarket = params.get('market');
+  const market: Market = urlMarket === 'IN' || urlMarket === 'US' ? urlMarket : pref;
+  useEffect(() => {
+    if (market !== pref) setPref(market);
+  }, [market, pref, setPref]);
   const sector = params.get('sector') ?? 'All';
   const q = params.get('q') ?? '';
   const sort = (params.get('sort') as SortKey | null) ?? 'upside';
@@ -39,17 +45,21 @@ export default function Stocks() {
     const next = new URLSearchParams(params);
     if (v == null || v === '' || v === 'All' || v === 'ALL') next.delete(k);
     else next.set(k, v);
-    if (k === 'market') next.delete('sector');
+    if (k === 'market') {
+      next.delete('sector');
+      next.delete('market'); // the remembered preference drives the tab
+      setPref(v as Market);
+    }
     setParams(next, { replace: true });
   };
 
-  const sectors = sectorsFor(market as Market | 'ALL');
+  const sectors = sectorsFor(market);
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const r = live.filter(
       (s) =>
-        (market === 'ALL' || s.market === market) &&
+        s.market === market &&
         (sector === 'All' || s.sector === sector) &&
         (rating === 'All' || s.rating === rating) &&
         (!onlyWatch || watch.includes(`${s.market}:${s.symbol}`)) &&
@@ -75,7 +85,7 @@ export default function Stocks() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Stock research</h1>
           <p className="mt-1 text-sm text-sub">Filter by market and sector. {status === 'live' ? 'Prices refresh every minute; valuation multiples re-base to the live price.' : `Showing ${STOCK_SNAPSHOT} research-snapshot prices (live feed unavailable).`}</p>
         </div>
-        <Segmented value={market as Market | 'ALL'} onChange={(v) => set('market', v)} options={[{ value: 'ALL', label: 'All markets' }, { value: 'IN', label: '🇮🇳 India' }, { value: 'US', label: '🇺🇸 US' }]} />
+        <Segmented value={market} onChange={(v) => set('market', v)} options={marketTabs} />
       </div>
 
       <div className="card mb-6 space-y-4 p-4 sm:p-5">
@@ -142,7 +152,7 @@ export default function Stocks() {
                     <td className="num text-right">{s.metrics.roe}%</td>
                     <td className={clsx('num text-right', s.metrics.epsGrowth3y >= 0 ? 'text-up' : 'text-down')}>{pct(s.metrics.epsGrowth3y, 0)}</td>
                     <td><Badge tone={ratingTone[s.rating]}>{s.rating}</Badge></td>
-                    <td className={clsx('num text-right font-semibold', up >= 0 ? 'text-up' : 'text-down')}>{pct(up)}</td>
+                    <td className={clsx('num text-right font-semibold', s.snapshotMismatch ? 'text-warn' : up >= 0 ? 'text-up' : 'text-down')} title={s.snapshotMismatch ? 'Fair value under review: live price differs sharply from the research snapshot' : undefined}>{s.snapshotMismatch ? 'Review' : pct(up)}</td>
                     <td className="text-center"><ScoreRing score={overallScore(s)} size={38} /></td>
                     <td><WatchButton id={`${s.market}:${s.symbol}`} /></td>
                   </tr>

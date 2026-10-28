@@ -30,8 +30,14 @@ $config = [
     ],
 
     // Upstream hosts (overridable for testing against mocks).
+    // Screener
+    'screener_ttl' => 120,         // seconds index quotes are cached
+    'constituents_ttl' => 86400,   // index member lists change only at rebalancing
+
     'upstream' => [
         'yahoo' => ['https://query1.finance.yahoo.com', 'https://query2.finance.yahoo.com'],
+        'yahoo_cookie' => 'https://fc.yahoo.com',
+        'niftyindices' => 'https://www.niftyindices.com',
         'nse' => 'https://www.nseindia.com',
         'twelvedata' => 'https://api.twelvedata.com',
     ],

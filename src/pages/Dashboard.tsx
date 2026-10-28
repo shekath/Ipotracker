@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { useMemo, useState } from 'react';
-import { ArrowRight, Rocket, ShieldCheck, Sparkles, Target } from 'lucide-react';
+import { useMemo } from 'react';
+import { ArrowRight, Rocket, ShieldCheck, SlidersHorizontal, Sparkles, Target } from 'lucide-react';
 import clsx from 'clsx';
 import { stocks, STOCK_SNAPSHOT } from '../data';
 import StockCard from '../components/StockCard';
@@ -11,26 +11,34 @@ import { ipoStatus, overallScore } from '../lib/scoring';
 import { useIpoViews } from '../lib/useIpoViews';
 import { useLiveStocks } from '../lib/live';
 import { LiveDot } from '../components/live';
-import type { Market } from '../types';
+import { marketTabs, useMarketPref } from '../lib/marketPref';
+import { useIndexDefs } from '../lib/screener';
 
 export default function Dashboard() {
-  const [market, setMarket] = useState<Market | 'ALL'>('ALL');
+  const [market, setMarket] = useMarketPref();
   const { stocks: live, status } = useLiveStocks(stocks);
-  const pool = live.filter((s) => market === 'ALL' || s.market === market);
+  const pool = live.filter((s) => s.market === market);
   const { views } = useIpoViews();
+  const indexDefs = (useIndexDefs() ?? []).filter((d) => d.market === market);
+  const isIN = market === 'IN';
+  const movers = pool.filter((s) => s.quote).sort((a, b) => b.quote!.changePct - a.quote!.changePct);
+  const gainers = movers.filter((s) => s.quote!.changePct > 0).slice(0, 4);
+  const losers = [...movers].reverse().filter((s) => s.quote!.changePct < 0).slice(0, 4);
+  // Stocks whose live price diverges sharply from the research snapshot (split/bonus) have unreliable fair values.
+  const valued = pool.filter((s) => !s.snapshotMismatch);
 
   const topPicks = useMemo(
     () =>
-      [...pool]
+      [...valued]
         .filter((s) => ['Strong Buy', 'Buy'].includes(s.rating) && s.conviction === 'High')
         .sort((a, b) => change(b.price, b.fairValue) - change(a.price, a.fairValue))
         .slice(0, 6),
-    [pool],
+    [valued],
   );
 
   const sectorStats = useMemo(() => {
     const m = new Map<string, { n: number; up: number; score: number }>();
-    pool.forEach((s) => {
+    valued.forEach((s) => {
       const e = m.get(s.sector) ?? { n: 0, up: 0, score: 0 };
       e.n += 1;
       e.up += change(s.price, s.fairValue);
@@ -38,39 +46,47 @@ export default function Dashboard() {
       m.set(s.sector, e);
     });
     return [...m.entries()].map(([sector, e]) => ({ sector, n: e.n, up: e.up / e.n, score: Math.round(e.score / e.n) })).sort((a, b) => b.up - a.up);
-  }, [pool]);
+  }, [valued]);
 
   const liveIpos = views.filter((i) => i.type === 'Mainboard' && ['Open', 'Upcoming'].includes(ipoStatus(i)));
-  const avgUpside = pool.reduce((a, s) => a + change(s.price, s.fairValue), 0) / pool.length;
+  const avgUpside = valued.length ? valued.reduce((a, s) => a + change(s.price, s.fairValue), 0) / valued.length : 0;
   const buys = pool.filter((s) => ['Strong Buy', 'Buy', 'Accumulate'].includes(s.rating)).length;
   const maxUp = Math.max(...sectorStats.map((s) => Math.abs(s.up)), 1);
 
   return (
     <div className="space-y-12">
+      <div className="-mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm text-sub">Showing <span className="font-semibold text-fg">{isIN ? 'Indian' : 'US'}</span> markets</div>
+        <Segmented value={market} onChange={setMarket} options={marketTabs} />
+      </div>
+
       <section className="relative overflow-hidden rounded-3xl border border-line bg-surface px-6 py-10 sm:px-10 sm:py-14">
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
         <div className="relative max-w-3xl">
-          <Badge tone="brand" className="!whitespace-normal"><Sparkles size={12} className="shrink-0" /> {status === 'live' ? 'Live prices · auto-tracked IPOs' : `Research snapshot · ${STOCK_SNAPSHOT}`}</Badge>
+          <Badge tone="brand" className="!whitespace-normal"><Sparkles size={12} className="shrink-0" /> {status === 'live' ? (isIN ? 'Live prices · auto-tracked IPOs' : 'Live prices') : `Research snapshot · ${STOCK_SNAPSHOT}`}</Badge>
           <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-5xl sm:leading-[1.1]">
-            Institutional-grade research for <span className="text-brand">Indian & US</span> markets.
+            Institutional-grade research for <span className="text-brand">{isIN ? 'Indian' : 'US'}</span> markets.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-sub sm:text-lg">
-            Fundamentals, business models, quarterly results, growth forecasts and clear trade plans with targets and stop losses — plus a deep-dive IPO desk for the Indian primary market.
+            {isIN
+              ? 'Fundamentals, quarterly results, growth forecasts and clear trade plans for NSE stocks, index screeners from Nifty 50 to Nifty 200, and a live IPO desk with subscription and GMP.'
+              : 'Fundamentals, quarterly results, growth forecasts and clear trade plans for US mega caps, plus a Dow 30 screener with live valuations.'}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link to="/stocks" className="btn bg-fg text-bg hover:opacity-90">Explore stocks <ArrowRight size={16} /></Link>
-            <Link to="/ipo" className="btn border border-line bg-surface hover:bg-muted"><Rocket size={16} /> IPO desk</Link>
+            <Link to="/screener" className="btn border border-line bg-surface hover:bg-muted"><SlidersHorizontal size={16} /> Index screener</Link>
+            {isIN && <Link to="/ipo" className="btn border border-line bg-surface hover:bg-muted"><Rocket size={16} /> IPO desk</Link>}
           </div>
         </div>
       </section>
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {[
-          { label: 'Stocks covered', value: stocks.length, dot: true, hint: `${stocks.filter((s) => s.market === 'IN').length} India · ${stocks.filter((s) => s.market === 'US').length} US` },
+          { label: 'Stocks researched', value: pool.length, dot: true, hint: isIN ? 'NSE large caps with full analysis' : 'US mega caps with full analysis' },
           { label: 'Positive ratings', value: `${buys}/${pool.length}`, hint: 'Strong Buy, Buy, Accumulate' },
-          { label: 'Avg. upside to FV', value: pct(avgUpside), hint: 'Across selected market', tone: avgUpside >= 0 ? 'text-up' : 'text-down' },
-          { label: 'Live IPOs', value: liveIpos.length, hint: 'Open or opening soon' },
+          { label: 'Avg. upside to FV', value: pct(avgUpside), hint: 'Researched stocks', tone: avgUpside >= 0 ? 'text-up' : 'text-down' },
+          isIN ? { label: 'Live IPOs', value: liveIpos.length, hint: 'Open or opening soon' } : { label: 'Index screeners', value: indexDefs.length, hint: 'Dow 30 · US mega caps' },
         ].map((k) => (
           <div key={k.label} className="card p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2"><span className="label">{k.label}</span>{'dot' in k && <LiveDot status={status} quote={pool.find((s) => s.quote)?.quote} />}</div>
@@ -84,19 +100,55 @@ export default function Dashboard() {
         <SectionHeader
           title="High-conviction picks"
           subtitle="Buy-rated, high-conviction names ranked by upside to fair value"
-          right={<Segmented value={market} onChange={setMarket} options={[{ value: 'ALL', label: 'All' }, { value: 'IN', label: '🇮🇳 India' }, { value: 'US', label: '🇺🇸 US' }]} />}
+          right={<Link to="/stocks" className="btn-ghost">All {isIN ? 'Indian' : 'US'} stocks <ArrowRight size={15} /></Link>}
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {topPicks.map((s) => <StockCard key={s.market + s.symbol} s={s} status={status} />)}
         </div>
       </section>
 
+      <section>
+        <SectionHeader title={isIN ? 'Indian index screeners' : 'US index screeners'} subtitle="Every constituent with live price, P/E, market cap and 52-week position" right={<Link to="/screener" className="btn-ghost">Open screener <ArrowRight size={15} /></Link>} />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {indexDefs.slice(0, 8).map((d) => (
+            <Link key={d.id} to={`/screener?index=${d.id}`} className="card group p-4 transition-all hover:-translate-y-0.5 hover:border-fg/20">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold group-hover:text-brand">{d.name}</span>
+                <span className="text-[11px] text-sub">{d.exchange}</span>
+              </div>
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-sub">{d.description}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {movers.length > 0 && (
+        <section className="grid gap-4 sm:grid-cols-2">
+          {[{ t: 'Top gainers today', list: gainers, empty: 'No gainers today.' }, { t: 'Top losers today', list: losers, empty: 'No decliners today.' }].map(({ t, list, empty }) => (
+            <div key={t} className="card card-pad">
+              <div className="mb-3 text-sm font-semibold">{t} <span className="font-normal text-sub">· researched stocks</span></div>
+              {!list.length && <p className="py-2 text-sm text-sub">{empty}</p>}
+              <ul className="divide-y divide-line">
+                {list.map((s) => (
+                  <li key={s.symbol}>
+                    <Link to={`/stocks/${s.market}/${encodeURIComponent(s.symbol)}`} className="flex items-center justify-between gap-3 py-2.5 hover:text-brand">
+                      <span className="min-w-0"><span className="font-semibold">{s.symbol}</span> <span className="truncate text-xs text-sub">{s.name}</span></span>
+                      <span className={clsx('num text-sm font-semibold', s.quote!.changePct >= 0 ? 'text-up' : 'text-down')}>{pct(s.quote!.changePct, 2)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+
       <section className="grid gap-6 lg:grid-cols-5">
         <div className="card card-pad lg:col-span-3">
           <SectionHeader title="Sector outlook" subtitle="Average upside to fair value and composite score" />
           <div className="space-y-3.5">
             {sectorStats.map((s) => (
-              <Link to={`/stocks?sector=${encodeURIComponent(s.sector)}${market !== 'ALL' ? `&market=${market}` : ''}`} key={s.sector} className="group grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 sm:grid-cols-[10rem_1fr_auto]">
+              <Link to={`/stocks?sector=${encodeURIComponent(s.sector)}&market=${market}`} key={s.sector} className="group grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 sm:grid-cols-[10rem_1fr_auto]">
                 <div className="truncate text-sm font-medium group-hover:text-brand">{s.sector} <span className="text-xs text-sub">({s.n})</span></div>
                 <div className="relative h-2 rounded-full bg-muted">
                   <div className={clsx('absolute h-2 rounded-full', s.up >= 0 ? 'bg-up' : 'bg-down')} style={{ width: `${(Math.abs(s.up) / maxUp) * 100}%` }} />
@@ -126,7 +178,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section>
+      {isIN && <section>
         <SectionHeader
           title="IPOs open & upcoming"
           subtitle="Indian mainboard issues with our apply / avoid view"
@@ -139,7 +191,7 @@ export default function Dashboard() {
         ) : (
           <div className="card card-pad text-sm text-sub">No issues are open right now. See the IPO desk for recently closed issues and the pipeline.</div>
         )}
-      </section>
+      </section>}
     </div>
   );
 }
