@@ -56,8 +56,14 @@ function http_json(string $url, array $opt = [])
  * @param array<string,string> $urls key => url
  * @return array<string,array{0:int,1:string}>
  */
-function http_multi(array $urls, array $opt = []): array
+function http_multi(array $urls, array $opt = [], int $concurrency = 25): array
 {
+    // Shared hosting limits concurrent connections: run in batches.
+    if (count($urls) > $concurrency) {
+        $out = [];
+        foreach (array_chunk($urls, $concurrency, true) as $batch) $out += http_multi($batch, $opt, $concurrency);
+        return $out;
+    }
     $mh = curl_multi_init();
     $handles = [];
     foreach ($urls as $k => $u) {

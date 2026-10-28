@@ -35,6 +35,36 @@ function parse_constituent_csv(string $csv): array
 /** @return array{rows:array,source:string} */
 function index_constituents(array $def): array
 {
+    if (!empty($def['union'])) return union_constituents($def);
+    return single_constituents($def);
+}
+
+/**
+ * "All" universe: the broad official list (Nifty 500) when reachable, otherwise
+ * every other index of the same market combined (deduplicated).
+ */
+function union_constituents(array $def): array
+{
+    if (!empty($def['csv'])) {
+        $broad = single_constituents($def + ['fallback' => []]);
+        if (count($broad['rows']) >= 50) return $broad;
+    }
+    $seen = [];
+    $official = false;
+    foreach (index_defs() as $other) {
+        if ($other['market'] !== $def['market'] || !empty($other['union'])) continue;
+        $c = single_constituents($other);
+        $official = $official || str_contains($c['source'], 'official');
+        foreach ($c['rows'] as $row) {
+            $sym = $row[0];
+            if (!isset($seen[$sym]) || (empty($seen[$sym][2]) && !empty($row[2]))) $seen[$sym] = $row;
+        }
+    }
+    return ['rows' => array_values($seen), 'source' => $official ? 'Combined index lists (NSE Indices)' : 'Combined bundled lists'];
+}
+
+function single_constituents(array $def): array
+{
     if (!empty($def['csv'])) {
         $ck = 'idx:' . $def['id'];
         if ($c = cache_get($ck, (int) cfg('constituents_ttl', 86400))) return $c;
