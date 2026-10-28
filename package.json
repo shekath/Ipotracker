@@ -10,7 +10,8 @@
     "typecheck": "tsc -b",
     "dev:api": "php -S 127.0.0.1:8000 -t public",
     "test:api": "bash tests/run-backend-tests.sh",
-    "package": "npm run build && node scripts/package.mjs"
+    "package": "npm run build && node scripts/package.mjs",
+    "deploy:branch": "bash scripts/deploy-branch.sh"
   },
   "dependencies": {
     "clsx": "^2.1.1",
