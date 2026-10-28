@@ -21,7 +21,15 @@ $config = [
     'ipo_refresh_minutes' => 20,  // if no cron job ran within this window, refresh on request
     'ipo_keep_days' => 120,       // drop IPOs that listed more than N days ago
     'cron_token' => '',           // set to allow https://site/api/cron/update-ipos.php?token=...
-    'market_holidays' => [],      // 'YYYY-MM-DD' exchange holidays, used for T+3 timeline estimates
+    // NSE equity trading holidays (weekdays only). Used for IPO T+3 timeline estimates and to find
+    // the last trading day of each week for the weekly index targets. Extend each year.
+    'market_holidays' => [
+        // 2026 (NSE circular)
+        '2026-01-15', '2026-01-26', '2026-03-03', '2026-03-26', '2026-03-31', '2026-04-03', '2026-04-14', '2026-05-01',
+        '2026-05-28', '2026-06-26', '2026-09-14', '2026-10-02', '2026-10-20', '2026-11-10', '2026-11-24', '2026-12-25',
+    ],
+    'market_close' => '15:30',     // NSE / BSE regular session close (IST)
+    'weekly_rollover_delay' => 1800, // seconds after the week's last close before targets move to the new week (4:00 pm IST, once closing prices have settled)
 
     // Grey-market premium sources (HTML tables with an IPO name column and a GMP column).
     'gmp_sources' => [

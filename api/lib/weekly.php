@@ -51,7 +51,10 @@ function weekly_fetch(array $reqs): array
     $missing = [];
     foreach ($reqs as $k => [$sym, $interval, $range]) {
         $c = cache_get("w:$sym:$interval", $ttl);
-        if ($c && weekly_is_open($c, $now)) $c = cache_get("w:$sym:$interval", $liveTtl);
+        // Refresh every minute while trading, and for 30 minutes after the week's final close so the
+        // rolled-over levels use the settled closing prices.
+        $settling = $now >= weekly_rollover_at($now) - (int) cfg('weekly_rollover_delay', 1800) && $now < weekly_rollover_at($now) + 1800;
+        if ($c && ($settling || weekly_is_open($c, $now))) $c = cache_get("w:$sym:$interval", $liveTtl);
         if ($c) $out[$k] = $c; else $missing[$k] = [$sym, $interval, $range];
     }
     foreach (cfg('upstream')['yahoo'] as $host) {
@@ -104,23 +107,53 @@ function weekly_group(array $bars, string $fmt): array
     return array_values($g);
 }
 
+/** Last trading day (Y-m-d) of the Mon–Fri week containing $t, skipping configured exchange holidays. */
+function weekly_last_trading_day(int $t): string
+{
+    $holidays = array_flip(cfg('market_holidays', []));
+    $mon = strtotime(date('Y-m-d', $t) . ' -' . ((int) date('N', $t) - 1) . ' days');
+    for ($i = 4; $i >= 0; $i--) {
+        $d = date('Y-m-d', strtotime("+$i days", $mon));
+        if (!isset($holidays[$d])) return $d;
+    }
+    return date('Y-m-d', strtotime('+4 days', $mon)); // a week with no sessions at all
+}
+
+/** When this week's levels roll over: the last trading day's close plus the configured delay (default 4:00 pm IST). */
+function weekly_rollover_at(int $t): int
+{
+    return strtotime(weekly_last_trading_day($t) . ' ' . cfg('market_close', '15:30')) + (int) cfg('weekly_rollover_delay', 1800);
+}
+
+/** True once this week has closed for good: after the rollover time on its last trading day, or on the weekend. */
+function weekly_week_done(int $now): bool
+{
+    return $now >= weekly_rollover_at($now);
+}
+
+/** Next time the targets move to a new week. */
+function weekly_next_rollover(int $now): int
+{
+    $at = weekly_rollover_at($now);
+    return $now < $at ? $at : weekly_rollover_at(strtotime('next monday', $now));
+}
+
 /**
  * Previous completed week and the present week so far.
- * Monday–Friday: previous = the latest week before this one. Saturday/Sunday: the week
- * that just ended becomes "previous", so the page shows next week's levels.
+ * Before the week's last close has settled (4:00 pm IST): previous = the latest week before this one.
+ * After it (and over the weekend): this week has finished, so it becomes "previous" and the
+ * page shows the coming week's levels.
  */
 function weekly_split(array $bars, int $now): array
 {
     $weeks = weekly_group($bars, 'o-W');
     $cur = weekly_week_key($now);
-    if ((int) date('N', $now) >= 6) {
-        return [$weeks[count($weeks) - 1], null];
-    }
     $prev = null; $current = null;
     foreach ($weeks as $w) {
         if ($w['key'] < $cur) $prev = $w;
         elseif ($w['key'] === $cur) $current = $w;
     }
+    if (weekly_week_done($now) && $current) return [$current, null];
     if (!$prev) throw new RuntimeException('Previous week not available yet');
     return [$prev, $current];
 }
@@ -186,5 +219,5 @@ function get_weekly(?int $now = null): array
         ];
     }
     if (!$out) throw new RuntimeException('Index data unavailable');
-    return ['indices' => $out, 'updatedAt' => date('c', $now)];
+    return ['indices' => $out, 'updatedAt' => date('c', $now), 'nextUpdate' => date('c', weekly_next_rollover($now))];
 }
