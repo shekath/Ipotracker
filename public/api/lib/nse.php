@@ -90,7 +90,8 @@ function category_key(string $label): ?string
     if (str_contains($l, 'snii') || ($twoLakh && $tenLakh) || ($tenLakh && preg_match('/up ?to|upto|below|less than/', $l))) return 'snii';
     if (str_contains($l, 'bnii') || ($tenLakh && preg_match('/more than|above|exceed/', $l))) return 'bnii';
     if (str_contains($l, 'non institutional') || str_contains($l, 'non-institutional') || preg_match('/\b(nii|hni)s?\b/', $l)) return 'nii';
-    if (str_contains($l, 'retail') || preg_match('/\brii?s?\b/', $l)) return 'retail';
+    // "Individuals(Other than RIIs)" is an NII sub-row, not retail.
+    if (!str_contains($l, 'other than') && (str_contains($l, 'retail') || preg_match('/\brii?s?\b/', $l))) return 'retail';
     if (str_contains($l, 'employee')) return 'employee';
     if (str_contains($l, 'shareholder')) return 'shareholder';
     if (str_contains($l, 'policy')) return 'policyholder';
@@ -106,7 +107,13 @@ function nse_subscription(string $symbol): array
     write_json(data_path('cache/nse-sub-' . preg_replace('/[^A-Z0-9]/', '', $symbol) . '.json'), $data);
     $out = [];
     foreach (rows_of($data) as $row) {
+        // Only main category rows: srNo "1", "2", "2.1", "3" (or none for Total).
+        // Sub-rows like "1(a) Mutual funds" or "2.1(b) Individuals" are breakdowns, and
+        // the first row is a header ("Sr.No.", "Category").
+        $sr = trim((string) (pick($row, 'srNo', 'srno') ?? ''));
+        if ($sr !== '' && !preg_match('/^\d+(\.\d+)?$/', $sr)) continue;
         $label = (string) (pick($row, 'category', 'categoryName', 'investorCategory') ?? '');
+        if (strtolower(trim($label)) === 'category') continue;
         $key = category_key($label);
         if (!$key) continue;
         $times = num(pick($row, 'noOfTotalMeant', 'noOfTimes', 'noOfTime', 'subscription', 'times'));

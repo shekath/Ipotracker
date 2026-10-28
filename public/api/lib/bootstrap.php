@@ -35,6 +35,8 @@ function num($v): ?float
 {
     if ($v === null || $v === '' || $v === '-') return null;
     if (is_int($v) || is_float($v)) return (float) $v;
+    $t = trim((string) $v);
+    if (is_numeric($t)) return (float) $t; // includes scientific notation such as "1.19E7"
     $clean = preg_replace('/[^0-9.\-]/', '', (string) $v);
     return is_numeric($clean) ? (float) $clean : null;
 }

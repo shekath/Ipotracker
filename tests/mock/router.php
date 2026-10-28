@@ -81,14 +81,24 @@ if ($path === '/api/all-upcoming-issues') {
 }
 if ($path === '/api/ipo-active-category') {
     $mult = $q['symbol'] === 'BLSPOLY' ? 1 : 0.2;
-    echo json_encode(['updateTime' => date('d-M-Y H:i:s'), 'dataList' => [
-        ['srNo' => '1', 'category' => 'Qualified Institutional Buyers(QIBs)', 'noOfShareOffered' => '3400000', 'noOfSharesBid' => (string) (5100000 * $mult), 'noOfTotalMeant' => (string) round(1.5 * $mult, 2)],
-        ['srNo' => '2', 'category' => 'Non Institutional Investors', 'noOfShareOffered' => '2550000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => (string) round(6.2 * $mult, 2)],
-        ['srNo' => '2.1', 'category' => 'Bid Amount of more than Ten Lakh Rupees', 'noOfShareOffered' => '1700000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => (string) round(5.1 * $mult, 2)],
-        ['srNo' => '2.2', 'category' => 'Bid Amount of more than two lakh rupees but upto Ten Lakh Rupees', 'noOfShareOffered' => '850000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => (string) round(8.4 * $mult, 2)],
-        // Live NSE omits offered/times for the retail row and only reports bids.
-        ['srNo' => '3', 'category' => 'Retail Individual Investors(RIIs)', 'noOfShareOffered' => '-', 'noOfSharesBid' => (string) (26180000 * $mult), 'noOfTotalMeant' => '-'],
-        ['srNo' => '4', 'category' => 'Total', 'noOfShareOffered' => '11900000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => (string) round(3.9 * $mult, 2)],
+    // Shape copied from a live NSE reply: header row, numbered main rows, lettered sub-rows
+    // (incl. "Individuals(Other than RIIs)" under NII) and a Total row in scientific notation.
+    $r = fn($v) => (string) round($v * $mult, 2);
+    $retailRow = $q['symbol'] === 'TINYSME'
+        ? ['srNo' => '3', 'category' => 'Retail Individual Investors(RIIs)', 'noOfShareOffered' => '-', 'noOfSharesBid' => '50000', 'noOfTotalMeant' => '-']
+        : ['srNo' => '3', 'category' => 'Retail Individual Investors(RIIs)', 'noOfShareOffered' => '5950000', 'noOfSharesBid' => '26180000', 'noOfTotalMeant' => $r(4.4)];
+    echo json_encode(['updateTime' => 'Updated as on ' . date('d-M-Y H:i:s'), 'symbol' => null, 'dataList' => [
+        ['srNo' => 'Sr.No.', 'category' => 'Category', 'noOfShareOffered' => 'No.of shares offered/reserved', 'noOfSharesBid' => 'No. of shares bid for', 'noOfTotalMeant' => 'No. of times of total meant for the category'],
+        ['srNo' => '1', 'category' => 'Qualified Institutional Buyers(QIBs)', 'noOfShareOffered' => '3400000', 'noOfSharesBid' => (string) (5100000 * $mult), 'noOfTotalMeant' => $r(1.5)],
+        ['srNo' => '1(c)', 'category' => 'Mutual funds', 'noOfShareOffered' => '', 'noOfSharesBid' => '0', 'noOfTotalMeant' => ''],
+        ['srNo' => '2', 'category' => 'Non Institutional Investors', 'noOfShareOffered' => '2550000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => $r(6.2)],
+        ['srNo' => '2.1', 'category' => 'Non Institutional Investors(Bid amount of more than Ten Lakh Rupees)', 'noOfShareOffered' => '1700000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => $r(5.1)],
+        ['srNo' => '2.1(b)', 'category' => 'Individuals(Other than RIIs)', 'noOfShareOffered' => '', 'noOfSharesBid' => '57711300', 'noOfTotalMeant' => ''],
+        ['srNo' => '2.2', 'category' => 'Non Institutional Investors(Bid amount of more than Two Lakh Rupees upto Ten Lakh Rupees)', 'noOfShareOffered' => '850000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => $r(8.4)],
+        ['srNo' => '2.2(b)', 'category' => 'Individuals(Other than RIIs)', 'noOfShareOffered' => '', 'noOfSharesBid' => '45410200', 'noOfTotalMeant' => ''],
+        $retailRow,
+        ['srNo' => '3(a)', 'category' => 'Cut Off', 'noOfShareOffered' => '', 'noOfSharesBid' => '100370500', 'noOfTotalMeant' => ''],
+        ['srNo' => null, 'category' => 'Total', 'noOfShareOffered' => '1.19E7', 'noOfSharesBid' => '2.585774E8', 'noOfTotalMeant' => $r(3.9)],
     ]]);
     exit;
 }
