@@ -95,10 +95,34 @@ export default function LineChart({
     setHover(Math.max(0, Math.min(points.length - 1, i)));
   };
 
+  // Keyboard: arrows step through points (Shift = 10 at a time), Home/End jump, Escape clears.
+  const onKey = (e: React.KeyboardEvent<SVGSVGElement>) => {
+    const n = points.length - 1;
+    const cur = hover ?? n;
+    const step = e.shiftKey ? 10 : 1;
+    const next = { ArrowLeft: cur - step, ArrowRight: cur + step, Home: 0, End: n }[e.key];
+    if (next != null) {
+      e.preventDefault();
+      setHover(Math.max(0, Math.min(n, next)));
+    } else if (e.key === 'Escape') setHover(null);
+  };
+
   return (
     <div ref={ref} className="relative w-full" style={{ height }}>
       {w > 0 && points.length > 1 && (
-        <svg width={w} height={height} className="block cursor-crosshair touch-pan-y" role="img" aria-label={ariaLabel} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+        <svg
+          width={w}
+          height={height}
+          className="block cursor-crosshair touch-pan-y rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
+          role="img"
+          aria-label={`${ariaLabel}. Use the left and right arrow keys to read values.`}
+          tabIndex={0}
+          onPointerMove={onMove}
+          onPointerLeave={() => setHover(null)}
+          onKeyDown={onKey}
+          onFocus={() => setHover(points.length - 1)}
+          onBlur={() => setHover(null)}
+        >
           <defs>
             <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" className="[stop-color:rgb(var(--fg))]" stopOpacity="0.1" />
@@ -108,7 +132,7 @@ export default function LineChart({
           {grid.map((v) => (
             <g key={v}>
               <line x1={pad.l} x2={w - pad.r} y1={Y(v)} y2={Y(v)} className="stroke-line" />
-              {Math.abs(Y(v) - Y(last)) > 14 && <text x={w - pad.r + 10} y={Y(v) + 4} className="fill-sub font-mono text-[11px]">{fmtY(v)}</text>}
+              {Math.abs(Y(v) - Y(last)) > 14 && <text x={w - pad.r + 10} y={Y(v) + 4} className="fill-sub font-mono text-[0.6875rem]">{fmtY(v)}</text>}
             </g>
           ))}
           {bands.map((b) => (
@@ -116,7 +140,7 @@ export default function LineChart({
               <rect x={pad.l} width={iw} y={Y(Math.max(b.from, b.to))} height={Math.abs(Y(b.from) - Y(b.to))} className="fill-brand" fillOpacity={0.1} />
               <line x1={pad.l} x2={w - pad.r} y1={Y(b.to)} y2={Y(b.to)} className="stroke-brand" strokeOpacity={0.5} />
               <line x1={pad.l} x2={w - pad.r} y1={Y(b.from)} y2={Y(b.from)} className="stroke-brand" strokeOpacity={0.5} />
-              <text x={w - pad.r - 8} y={Y(Math.min(b.from, b.to)) - 6} textAnchor="end" className="fill-brand font-mono text-[11px] font-semibold">{b.label}</text>
+              <text x={w - pad.r - 8} y={Y(Math.min(b.from, b.to)) - 6} textAnchor="end" className="fill-brand font-mono text-[0.6875rem] font-semibold">{b.label}</text>
             </g>
           ))}
           {overlay && (
@@ -127,14 +151,14 @@ export default function LineChart({
           {refLines.filter((r) => inView(r.value)).map((r) => (
             <g key={r.label}>
               <line x1={pad.l} x2={w - pad.r} y1={Y(r.value)} y2={Y(r.value)} className={stroke[r.tone]} strokeWidth={1.25} strokeDasharray="6 4" />
-              <rect x={pad.l + 4} y={Y(r.value) - 19} width={r.label.length * 6.8 + 14} height={17} rx={4} className={`fill-surface ${stroke[r.tone]}`} />
-              <text x={pad.l + 11} y={Y(r.value) - 7} className={`${fill[r.tone]} font-mono text-[11px] font-semibold`}>{r.label}</text>
+              <rect x={pad.l + 4} y={Y(r.value) - 19} width={r.label.length * 7.3 + 14} height={17} rx={4} className={`fill-surface ${stroke[r.tone]}`} />
+              <text x={pad.l + 11} y={Y(r.value) - 7} className={`${fill[r.tone]} font-mono text-[0.6875rem] font-semibold`}>{r.label}</text>
             </g>
           ))}
           <rect x={w - pad.r + 4} y={Y(last) - 10} width={pad.r - 6} height={20} rx={4} className="fill-fg" />
-          <text x={w - pad.r + 9} y={Y(last) + 4} className="fill-surface font-mono text-[11px] font-semibold">{fmtY(last)}</text>
+          <text x={w - pad.r + 9} y={Y(last) + 4} className="fill-surface font-mono text-[0.6875rem] font-semibold">{fmtY(last)}</text>
           {ticks.map((i) => (
-            <text key={i} x={X(i)} y={height - 8} textAnchor="middle" className="fill-sub font-mono text-[11px]">{fmtX(points[i][0])}</text>
+            <text key={i} x={X(i)} y={height - 8} textAnchor="middle" className="fill-sub font-mono text-[0.6875rem]">{fmtX(points[i][0])}</text>
           ))}
           {hover != null && (
             <g pointerEvents="none">
@@ -145,8 +169,10 @@ export default function LineChart({
           )}
         </svg>
       )}
+      <span className="sr-only" aria-live="polite">{hover != null ? fmtTip(points[hover][0], vals[hover]) : ''}</span>
       {hover != null && (
         <div
+          aria-hidden="true"
           className="pointer-events-none absolute whitespace-nowrap rounded-md bg-fg px-2.5 py-1.5 font-mono text-xs font-medium text-surface"
           style={{ left: Math.min(Math.max(X(hover), 70), w - 140), top: Y(vals[hover]), transform: 'translate(-50%, calc(-100% - 12px))' }}
         >

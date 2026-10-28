@@ -82,14 +82,14 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
             aria-controls="palette-results"
             autoComplete="off"
           />
-          <kbd className="rounded-[5px] border border-line bg-muted px-1.5 py-1 font-mono text-[11px] text-fg2">esc</kbd>
+          <kbd className="rounded-[5px] border border-line bg-muted px-1.5 py-1 font-mono text-[0.6875rem] text-fg2">esc</kbd>
         </div>
         <ul id="palette-results" role="listbox" className="max-h-[380px] overflow-auto p-1.5">
           {shown.map((i, k) => {
             const head = i.group !== last ? (last = i.group) : null;
             return (
               <li key={i.to} role="presentation">
-                {head && <div className="px-2.5 pb-1 pt-2.5 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-sub">{head}</div>}
+                {head && <div className="px-2.5 pb-1 pt-2.5 text-[0.71875rem] font-semibold uppercase tracking-[0.04em] text-sub">{head}</div>}
                 <button
                   role="option"
                   aria-selected={k === sel}
@@ -97,9 +97,9 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
                   onClick={() => go(i)}
                   className={clsx('grid w-full grid-cols-[76px_1fr_auto] items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm', k === sel && 'bg-muted shadow-[inset_2px_0_0_rgb(var(--fg))]')}
                 >
-                  <span className="tk truncate text-[12.5px]">{i.code}</span>
+                  <span className="tk truncate text-[0.78125rem]">{i.code}</span>
                   <span className="truncate">{i.title}</span>
-                  <span className="truncate text-[12.5px] text-sub">{i.meta}</span>
+                  <span className="truncate text-[0.78125rem] text-sub">{i.meta}</span>
                 </button>
               </li>
             );

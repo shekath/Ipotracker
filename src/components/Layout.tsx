@@ -21,7 +21,7 @@ const nav: { to: string; label: string; mobile?: string; icon: typeof Rocket; en
 
 export function Logo() {
   return (
-    <Link to="/" className="flex items-center gap-2.5 whitespace-nowrap text-[16.5px] font-bold tracking-[-0.02em]">
+    <Link to="/" className="flex items-center gap-2.5 whitespace-nowrap text-[1.03125rem] font-bold tracking-[-0.02em]">
       <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] bg-fg">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" className="stroke-surface" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8" /></svg>
       </span>
@@ -62,7 +62,7 @@ function Tape() {
   const live = items.filter((i) => quotes[i.id]);
   return (
     <div className="border-t border-line bg-surface">
-      <div className="no-scrollbar mx-auto flex h-[34px] max-w-[1400px] items-center gap-6 overflow-x-auto whitespace-nowrap px-4 font-mono text-[13px] sm:px-7">
+      <div className="no-scrollbar mx-auto flex h-[34px] max-w-[1400px] items-center gap-6 overflow-x-auto whitespace-nowrap px-4 font-mono text-[0.8125rem] sm:px-7">
         <span className={clsx('inline-flex items-center gap-2 font-semibold', open ? 'text-up' : 'text-sub')}>
           <span className={clsx('h-[7px] w-[7px] rounded-full bg-current', open && 'animate-pulse shadow-[0_0_0_3px_rgb(var(--up)/0.15)]')} />
           {open ? 'MARKET OPEN' : 'MARKET CLOSED'}
@@ -112,7 +112,7 @@ export default function Layout() {
           <Logo />
           <nav className="hidden h-full items-stretch gap-1 md:flex" aria-label="Primary">
             {nav.map(({ to, label, end }) => (
-              <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('relative flex items-center px-3 text-[14.5px] font-medium transition-colors', isActive ? 'text-fg after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:rounded-t after:bg-fg' : 'text-sub hover:text-fg')}>
+              <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('relative flex items-center px-3 text-[0.90625rem] font-medium transition-colors', isActive ? 'text-fg after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:rounded-t after:bg-fg' : 'text-sub hover:text-fg')}>
                 {label}
               </NavLink>
             ))}
@@ -121,7 +121,7 @@ export default function Layout() {
           <button onClick={() => setPalette(true)} className="flex h-9 w-9 items-center justify-center gap-2.5 rounded-[9px] border border-line bg-muted text-sm text-sub transition-colors hover:border-line2 lg:w-[280px] lg:justify-start lg:px-3" aria-label="Search stocks, IPOs and indices">
             <Search size={15} />
             <span className="hidden lg:inline">Search stocks, IPOs…</span>
-            <kbd className="ml-auto hidden rounded-[5px] border border-line bg-surface px-1.5 py-1 font-mono text-[11px] text-fg2 lg:inline">⌘K</kbd>
+            <kbd className="ml-auto hidden rounded-[5px] border border-line bg-surface px-1.5 py-1 font-mono text-[0.6875rem] text-fg2 lg:inline">⌘K</kbd>
           </button>
           <div className="hidden sm:block"><MarketSwitch /></div>
           <ThemeButton />
@@ -147,7 +147,7 @@ export default function Layout() {
 
       <nav className="fixed inset-x-3 bottom-3 z-40 grid h-[62px] grid-cols-5 rounded-2xl bg-fg p-1.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.5)] md:hidden" aria-label="Primary mobile">
         {nav.map(({ to, label, mobile, icon: Icon, end }) => (
-          <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('flex flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium', isActive ? 'bg-surface/15 text-surface' : 'text-surface/60')}>
+          <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('flex flex-col items-center justify-center gap-0.5 rounded-xl text-[0.6875rem] font-medium', isActive ? 'bg-surface/15 text-surface' : 'text-surface/60')}>
             <Icon size={19} />
             {mobile ?? (label === 'IPO desk' ? 'IPOs' : label)}
           </NavLink>

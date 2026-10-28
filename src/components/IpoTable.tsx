@@ -58,11 +58,11 @@ export default function IpoTable({ rows }: { rows: IpoView[] }) {
               <tr key={i.id} className="cursor-pointer transition-colors hover:bg-muted" onClick={() => nav(`/ipo/${i.id}`)}>
                 <td className="min-w-[10rem] !whitespace-normal">
                   <a href={`#/ipo/${i.id}`} onClick={(e) => e.preventDefault()} className="font-semibold hover:text-brand">{i.name}</a>
-                  <span className="mt-0.5 block text-[12.5px] text-sub">{i.type}<span className="md:hidden"> · {when(i)}</span></span>
+                  <span className="mt-0.5 block text-[0.78125rem] text-sub">{i.type}<span className="md:hidden"> · {when(i)}</span></span>
                 </td>
                 <td className="hidden md:table-cell">
                   <Badge tone={statusTone[st]}>{st}</Badge>
-                  <span className="mt-0.5 block text-[12.5px] text-sub">{when(i)}</span>
+                  <span className="mt-0.5 block text-[0.78125rem] text-sub">{when(i)}</span>
                 </td>
                 <td className="num hidden text-right text-fg2 lg:table-cell">{i.priceBand ? `₹${i.priceBand[0]}–${i.priceBand[1]}` : 'TBA'}</td>
                 <td>
@@ -70,14 +70,14 @@ export default function IpoTable({ rows }: { rows: IpoView[] }) {
                     <span className="whitespace-nowrap">
                       <MixBar i={i} />
                       <span className="num font-semibold">{fx(s.total)}</span>
-                      <span className="num ml-2.5 hidden text-[12.5px] text-sub xl:inline">{[s.qib, s.nii, s.retail].map(fx).join(' · ')}</span>
+                      <span className="num ml-2.5 hidden text-[0.78125rem] text-sub xl:inline">{[s.qib, s.nii, s.retail].map(fx).join(' · ')}</span>
                     </span>
                   ) : (
-                    <span className="text-[13px] text-sub">{st === 'Upcoming' ? 'Not open yet' : '—'}</span>
+                    <span className="text-[0.8125rem] text-sub">{st === 'Upcoming' ? 'Not open yet' : '—'}</span>
                   )}
                 </td>
                 <td className="num text-right">
-                  {i.gmp != null ? <>₹{i.gmp} {g != null && <span className={clsx('text-[12.5px]', g >= 0 ? 'text-up' : 'text-down')}>{g >= 0 ? '+' : ''}{g.toFixed(0)}%</span>}</> : <span className="text-sub">—</span>}
+                  {i.gmp != null ? <>₹{i.gmp} {g != null && <span className={clsx('text-[0.78125rem]', g >= 0 ? 'text-up' : 'text-down')}>{g >= 0 ? '+' : ''}{g.toFixed(0)}%</span>}</> : <span className="text-sub">—</span>}
                 </td>
                 <td className="num hidden text-right text-fg2 lg:table-cell">{i.gmp != null && i.priceBand ? `₹${(i.priceBand[1] + i.gmp).toLocaleString('en-IN')}` : '—'}</td>
                 <td className="text-right"><Badge tone={verdictTone[i.verdict]}>{i.verdict}</Badge></td>

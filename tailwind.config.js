@@ -14,6 +14,7 @@ export default {
         muted: 'rgb(var(--muted) / <alpha-value>)',
         line: 'rgb(var(--line) / <alpha-value>)',
         line2: 'rgb(var(--line2) / <alpha-value>)',
+        field: 'rgb(var(--field) / <alpha-value>)',
         fg2: 'rgb(var(--fg2) / <alpha-value>)',
         fg: 'rgb(var(--fg) / <alpha-value>)',
         sub: 'rgb(var(--sub) / <alpha-value>)',

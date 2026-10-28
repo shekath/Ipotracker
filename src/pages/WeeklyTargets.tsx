@@ -208,7 +208,7 @@ function Fx({ name, f, v, hot }: { name: string; f: string; v: string; hot?: boo
   return (
     <div className={clsx('min-w-0 rounded-xl p-3.5', hot ? 'bg-warn/10' : 'bg-muted')}>
       <div className="label">{name}</div>
-      <div className="mt-1 break-words font-mono text-[11px] text-sub">{f}</div>
+      <div className="mt-1 break-words font-mono text-[0.6875rem] text-sub">{f}</div>
       <div className={clsx('num mt-0.5 text-lg font-semibold', hot && 'text-warn')}>{v}</div>
     </div>
   );

@@ -98,9 +98,9 @@ function StockView({ s: base }: { s: Stock }) {
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-1.5 text-[13px] text-sub">
-        <Link to={`/stocks?market=${s.market}`} className="hover:text-fg">Stocks</Link> /
-        <Link to={`/stocks?market=${s.market}&sector=${encodeURIComponent(s.sector)}`} className="hover:text-fg">{s.sector}</Link> /
+      <div className="mb-3 flex items-center gap-1.5 text-[0.8125rem] text-sub">
+        <Link to={`/stocks?market=${s.market}`} className="py-1 hover:text-fg">Stocks</Link> /
+        <Link to={`/stocks?market=${s.market}&sector=${encodeURIComponent(s.sector)}`} className="py-1 hover:text-fg">{s.sector}</Link> /
         <span className="truncate text-fg">{s.name}</span>
       </div>
 
@@ -115,13 +115,13 @@ function StockView({ s: base }: { s: Stock }) {
             </h1>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {[s.industry, `Mcap ${fmtMcap(s.marketCap, s.market)}`, `Score ${score}/100`].map((t) => (
-                <span key={t} className="rounded-md border border-line bg-muted px-2 py-0.5 text-[12.5px] text-fg2">{t}</span>
+                <span key={t} className="rounded-md border border-line bg-muted px-2 py-0.5 text-[0.78125rem] text-fg2">{t}</span>
               ))}
             </div>
           </div>
           <div className="md:text-right">
-            <div className="text-[34px] font-semibold leading-none tracking-[-0.035em] tabular-nums">{fmtPrice(s.price, s.market)}</div>
-            <div className="mt-1.5"><ChangeTag q={q} abs className="!text-[13.5px]" /></div>
+            <div className="text-[2.125rem] font-semibold leading-none tracking-[-0.035em] tabular-nums">{fmtPrice(s.price, s.market)}</div>
+            <div className="mt-1.5"><ChangeTag q={q} abs className="!text-[0.84375rem]" /></div>
             <div className="mt-1.5 flex items-center gap-2 text-xs text-sub md:justify-end">
               <LiveDot status={status} quote={q} />
               <span>{q ? `${timeAgo(q.time)}${q.volume ? ` · Vol ${(q.volume / 1e6).toFixed(1)}M` : ''}` : `${STOCK_SNAPSHOT} snapshot`}</span>
@@ -131,7 +131,7 @@ function StockView({ s: base }: { s: Stock }) {
 
         {/* Verdict */}
         <div className="mx-4 mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[10px] border border-line bg-muted px-4 py-3.5 sm:mx-6">
-          <Badge tone={ratingTone[s.rating]} className="!h-7 !text-[13.5px]">{s.rating}</Badge>
+          <Badge tone={ratingTone[s.rating]} className="!h-7 !text-[0.84375rem]">{s.rating}</Badge>
           <div>
             <div className="label mb-1">CONVICTION · {s.conviction.toUpperCase()}</div>
             <ConvictionMeter level={s.conviction} />
@@ -163,6 +163,7 @@ function StockView({ s: base }: { s: Stock }) {
             <div className="px-4 pt-4 sm:px-5">
               <PriceChart
                 id={stockId(s)}
+                name={s.name}
                 market={s.market}
                 height={320}
                 levels={{ zone: levels.entry, zoneLabel: levels.target < levels.entry[0] ? 'EXIT ZONE' : 'BUY ZONE', target: levels.target, stop: levels.stopLoss, fair: s.fairValue }}
@@ -179,7 +180,7 @@ function StockView({ s: base }: { s: Stock }) {
               ].map(([k, v], i) => (
                 <div key={k} className={clsx('px-4 py-3 sm:px-5', i % 3 !== 0 && 'border-l border-line', i >= 3 && 'max-sm:border-t max-sm:border-line', i === 3 && 'sm:border-l sm:border-line')}>
                   <dt className="label">{k}</dt>
-                  <dd className="num mt-0.5 text-[14.5px] font-medium">{v}</dd>
+                  <dd className="num mt-0.5 text-[0.90625rem] font-medium">{v}</dd>
                 </div>
               ))}
             </dl>
@@ -191,8 +192,8 @@ function StockView({ s: base }: { s: Stock }) {
               </div>
               <div className="mt-3.5 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
                 {s.revenueMix.map((r, i) => (
-                  <div key={r.segment} className="text-[13px] text-sub">
-                    <b className="flex items-center gap-1.5 text-[13.5px] font-semibold text-fg"><i className={clsx('h-2 w-2 shrink-0 rounded-sm', mixColors[i % mixColors.length])} /><span className="truncate">{r.segment}</span></b>
+                  <div key={r.segment} className="text-[0.8125rem] text-sub">
+                    <b className="flex items-center gap-1.5 text-[0.84375rem] font-semibold text-fg"><i className={clsx('h-2 w-2 shrink-0 rounded-sm', mixColors[i % mixColors.length])} /><span className="truncate">{r.segment}</span></b>
                     <span className="num mt-0.5 block text-lg font-semibold text-fg">{r.share}%</span>
                   </div>
                 ))}
@@ -216,7 +217,7 @@ function StockView({ s: base }: { s: Stock }) {
           <div className="divide-y divide-line">
             {pillars.map((p) => (
               <div key={p.key} className="grid grid-cols-[1fr_auto_34px] items-center gap-3 px-4 py-3 text-sm sm:px-5">
-                <span className="min-w-0">{p.label}<small className="block truncate text-[12.5px] text-sub">{p.note}</small></span>
+                <span className="min-w-0">{p.label}<small className="block truncate text-[0.78125rem] text-sub">{p.note}</small></span>
                 <SegBar score={p.score} />
                 <span className="num text-right font-semibold">{p.score}</span>
               </div>
@@ -229,13 +230,13 @@ function StockView({ s: base }: { s: Stock }) {
             {metricCards.map((c, i) => (
               <div key={c.k} className={clsx('border-line px-4 py-4 sm:px-5', i % 2 === 1 && 'border-l', i >= 2 && 'border-t', 'sm:border-l-0 sm:border-t-0', i % 4 !== 0 && 'sm:border-l', i >= 4 && 'sm:border-t')}>
                 <dt className="label">{c.k}</dt>
-                <dd className="num mt-1 text-[19px] font-semibold tracking-[-0.02em]">{c.v}</dd>
+                <dd className="num mt-1 text-[1.1875rem] font-semibold tracking-[-0.02em]">{c.v}</dd>
                 {c.r != null && (
                   <div className="relative mt-2.5 h-1 rounded-full bg-gradient-to-r from-down/25 via-muted to-up/25 ring-1 ring-inset ring-line" title={`Better than ${c.r}% of researched ${marketName} stocks`}>
                     <i className="absolute -top-[3px] h-2.5 w-2.5 -translate-x-1/2 rounded-full border-2 border-surface bg-fg" style={{ left: `${c.r}%` }} />
                   </div>
                 )}
-                <p className="mt-1.5 text-[12.5px] leading-snug text-sub">{c.note}</p>
+                <p className="mt-1.5 text-[0.78125rem] leading-snug text-sub">{c.note}</p>
               </div>
             ))}
           </dl>
@@ -290,7 +291,7 @@ function StockView({ s: base }: { s: Stock }) {
             {[...s.news].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6).map((n) => (
               <li key={n.title} className="grid grid-cols-[10px_1fr_auto] items-start gap-3 px-4 py-3 text-sm sm:px-5">
                 <span className={clsx('mt-[7px] h-2 w-2 rounded-full', impactDot[n.impact])} />
-                <span>{n.title}<small className="mt-0.5 block text-[12.5px] text-sub">{n.kind} · {fmtDate(n.date)}</small></span>
+                <span>{n.title}<small className="mt-0.5 block text-[0.78125rem] text-sub">{n.kind} · {fmtDate(n.date)}</small></span>
                 <Badge tone={impactTone[n.impact]} className="capitalize">{n.impact}</Badge>
               </li>
             ))}
@@ -332,17 +333,17 @@ function StockView({ s: base }: { s: Stock }) {
       <div className="card mt-4 grid md:grid-cols-2">
         <div className="p-4 sm:p-5">
           <div className="label !text-up">WHY OWN IT</div>
-          <ul className="mt-2.5 grid gap-2.5 text-[13.5px] leading-relaxed text-fg2">
+          <ul className="mt-2.5 grid gap-2.5 text-[0.84375rem] leading-relaxed text-fg2">
             {[...s.growthDrivers, ...s.moats].slice(0, 6).map((t) => <li key={t} className="grid grid-cols-[16px_1fr] gap-2"><Check size={16} className="mt-0.5 text-up" />{t}</li>)}
           </ul>
         </div>
         <div className="border-t border-line p-4 sm:p-5 md:border-l md:border-t-0">
           <div className="label !text-down">WHAT COULD GO WRONG</div>
-          <ul className="mt-2.5 grid gap-2.5 text-[13.5px] leading-relaxed text-fg2">
+          <ul className="mt-2.5 grid gap-2.5 text-[0.84375rem] leading-relaxed text-fg2">
             {s.risks.map((t) => <li key={t} className="grid grid-cols-[16px_1fr] gap-2"><X size={16} className="mt-0.5 text-down" />{t}</li>)}
           </ul>
         </div>
-        <div className="border-t border-line p-4 text-[13.5px] leading-relaxed text-fg2 sm:p-5 md:col-span-2">
+        <div className="border-t border-line p-4 text-[0.84375rem] leading-relaxed text-fg2 sm:p-5 md:col-span-2">
           <span className="label mr-2">ABOUT</span>{s.about}
         </div>
       </div>
@@ -362,7 +363,7 @@ function StockView({ s: base }: { s: Stock }) {
                     <tr key={p.symbol} className={clsx(self && 'bg-muted')}>
                       <td>
                         {self ? <span className="tk">{p.symbol}</span> : <Link to={`/stocks/${p.market}/${encodeURIComponent(p.symbol)}`} className="tk hover:text-brand">{p.symbol}</Link>}
-                        <span className="ml-2 text-[12.5px] text-sub">{p.name}</span>
+                        <span className="ml-2 text-[0.78125rem] text-sub">{p.name}</span>
                       </td>
                       <td className="num text-right">{p.metrics.pe.toFixed(1)}</td>
                       <td className="num text-right">{p.metrics.forwardPe.toFixed(1)}</td>
