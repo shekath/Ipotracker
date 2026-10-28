@@ -34,7 +34,7 @@ The site includes a small **PHP backend** in `api/`, which runs on any cPanel or
 | `api/ipos.php` | IPOs discovered automatically from NSE (mainboard and SME), with day-wise subscription by category (QIB, NII, bNII, sNII, retail, employee, shareholder), daily GMP and the T+3 listing timeline. |
 | `api/cron/update-ipos.php` | Refresh job for the IPO data. Run it from cron, or call it as a URL with a token. |
 | `api/screener.php?index=nifty50` | Index members with live price, market cap, P/E, P/B and dividend yield. Official member lists come from niftyindices.com (cached 24 h), with bundled lists in `data/indices.json` as fallback. |
-| `api/weekly.php` | Previous completed week's high / low / close for Nifty 50, Nifty Bank and Sensex plus India VIX high / low, the present week so far and the last session's close (Yahoo weekly and daily candles, cached 5 min). Feeds the Weekly index targets page; `data/weekly-snapshot.json` is the fallback without PHP. |
+| `api/weekly.php` | Previous completed week's high / low / close for Nifty 50, Nifty Bank and Sensex plus India VIX high / low, the present week so far and the last session's close (Yahoo weekly and daily candles, cached 5 min). Rolls over automatically once the week's last close has settled (4:00 pm IST on the last trading day, which is Thursday when Friday is a holiday; `market_holidays` in `config.php` decides, so extend it each year), and returns `nextUpdate`. From 3:30 to 4:30 pm on that day the data refreshes every minute. Feeds the Weekly index targets page; `data/weekly-snapshot.json` is the fallback without PHP. |
 | `api/health.php` | Setup diagnostics: PHP version, extensions, whether the data folder is writable, and the status of each source. |
 
 How it behaves:

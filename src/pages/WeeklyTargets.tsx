@@ -28,10 +28,10 @@ function store<T>(key: string, fallback: T, ok: (v: unknown) => boolean): T {
 }
 function save(key: string, v: unknown) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* storage unavailable */ } }
 
-async function loadFeed(): Promise<{ feed: WeeklyFeed; live: boolean }> {
+async function loadFeed(): Promise<{ feed: WeeklyFeed; live: boolean; nextUpdate?: string }> {
   try {
-    const j = await getJSON<{ indices: WeeklyFeed }>('weekly.php');
-    if (j.indices?.NIFTY?.prev) return { feed: j.indices, live: true };
+    const j = await getJSON<{ indices: WeeklyFeed; nextUpdate?: string }>('weekly.php');
+    if (j.indices?.NIFTY?.prev) return { feed: j.indices, live: true, nextUpdate: j.nextUpdate };
     throw new Error('empty');
   } catch {
     const res = await fetch('./data/weekly-snapshot.json');
@@ -45,6 +45,7 @@ export default function WeeklyTargets() {
   const [div, setDiv] = useState<Divisor>(() => store('ml-wt-div', 4 as Divisor, (v) => v === 1 || v === 2 || v === 4));
   const [feed, setFeed] = useState<WeeklyFeed | null>(null);
   const [live, setLive] = useState(false);
+  const [nextUpdate, setNextUpdate] = useState<string | undefined>();
   const [failed, setFailed] = useState(false);
   const [edits, setEdits] = useState<Partial<Record<IndexKey, Edits>>>({});
   const [panel, setPanel] = useState(false);
@@ -52,7 +53,7 @@ export default function WeeklyTargets() {
 
   useEffect(() => {
     let alive = true;
-    const run = () => loadFeed().then((r) => { if (alive) { setFeed(r.feed); setLive(r.live); setFailed(false); } }).catch(() => alive && setFailed(true));
+    const run = () => loadFeed().then((r) => { if (alive) { setFeed(r.feed); setLive(r.live); setNextUpdate(r.nextUpdate); setFailed(false); } }).catch(() => alive && setFailed(true));
     run();
     // Every 30 s with live data, so the live-price marker moves during market hours (the API caches for 60 s).
     const t = setInterval(() => { if (live) run(); }, 30_000);
@@ -120,6 +121,11 @@ export default function WeeklyTargets() {
           <>
             <Badge tone={live && !item.stale ? 'up' : 'warn'}>{live ? (item.stale ? 'Live · delayed' : 'Live') : 'Snapshot'}</Badge>
             <span>Last week {item.prevWeekLabel} · {live ? item.source : 'research snapshot (live feed unavailable)'}</span>
+            {live && nextUpdate && (
+              <span title="New weekly high, low, close and targets load automatically at 4:00 pm IST on the last trading day of the week, once the close has settled">
+                · Next update {new Date(nextUpdate).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })} IST
+              </span>
+            )}
           </>
         ) : failed ? <span className="text-down">Couldn't load index data. Open Edit inputs to type last week's numbers.</span> : <span>Loading index data…</span>}
       </div>
