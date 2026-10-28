@@ -15,7 +15,6 @@ const nav = [
   { to: '/stocks', label: 'Stocks', icon: BarChart3 },
   { to: '/screener', label: 'Screener', icon: SlidersHorizontal },
   { to: '/ipo', label: 'IPO desk', icon: Rocket },
-  { to: '/methodology', label: 'Methodology' },
 ];
 
 export function Logo() {
@@ -140,7 +139,6 @@ export default function Layout() {
           </p>
           <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
             <span>© {new Date().getFullYear()} MarketLens</span>
-            <Link to="/methodology" className="hover:text-fg">Methodology</Link>
           </p>
         </div>
       </footer>

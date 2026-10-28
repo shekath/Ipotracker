@@ -16,7 +16,6 @@ const steps = [
   ['logo', 'header a >> nth=0', 'Market overview'],
   ['All stocks link', 'text=All stocks', 'Stock research'],
   ['stock row', 'main a[href*="#/stocks/IN/"] >> nth=0', null],
-  ['header Methodology', 'header nav >> text=Methodology', 'Methodology'],
 ];
 
 (async () => {
