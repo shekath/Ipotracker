@@ -74,29 +74,57 @@ function weekly_week_key(int $t): string
 }
 
 /**
- * Split weekly candles into the previous completed week and the present week.
- * On Saturday/Sunday the week that just ended becomes "previous" (next week's levels).
+ * Merge candles that fall in the same period (an ISO week or a calendar day, in the
+ * configured timezone). Yahoo often appends an extra candle for the live session next
+ * to the current period's candle, so position in the array cannot be trusted.
+ * @return array<int,array{t:int,open:float,high:float,low:float,close:float,key:string}> oldest first
+ */
+function weekly_group(array $bars, string $fmt): array
+{
+    $g = [];
+    foreach ($bars as $b) {
+        $k = date($fmt, $b['t']);
+        if (!isset($g[$k])) { $g[$k] = $b + ['key' => $k]; continue; }
+        $g[$k]['high'] = max($g[$k]['high'], $b['high']);
+        $g[$k]['low'] = min($g[$k]['low'], $b['low']);
+        if ($b['t'] >= $g[$k]['t']) $g[$k]['close'] = $b['close'];
+        $g[$k]['t'] = min($g[$k]['t'], $b['t']);
+    }
+    ksort($g);
+    return array_values($g);
+}
+
+/**
+ * Previous completed week and the present week so far.
+ * Monday–Friday: previous = the latest week before this one. Saturday/Sunday: the week
+ * that just ended becomes "previous", so the page shows next week's levels.
  */
 function weekly_split(array $bars, int $now): array
 {
-    $last = $bars[count($bars) - 1];
-    $weekend = (int) date('N', $now) >= 6;
-    if (weekly_week_key($last['t']) === weekly_week_key($now) && !$weekend && count($bars) > 1) {
-        return [$bars[count($bars) - 2], $last];
+    $weeks = weekly_group($bars, 'o-W');
+    $cur = weekly_week_key($now);
+    if ((int) date('N', $now) >= 6) {
+        return [$weeks[count($weeks) - 1], null];
     }
-    return [$last, null];
+    $prev = null; $current = null;
+    foreach ($weeks as $w) {
+        if ($w['key'] < $cur) $prev = $w;
+        elseif ($w['key'] === $cur) $current = $w;
+    }
+    if (!$prev) throw new RuntimeException('Previous week not available yet');
+    return [$prev, $current];
 }
 
 /** Close of the last finished session: today's candle counts only once the session has ended. */
 function weekly_prev_day(array $daily, int $now): ?array
 {
-    $bars = $daily['bars'];
-    $b = $bars[count($bars) - 1] ?? null;
+    $days = weekly_group($daily['bars'], 'Y-m-d');
+    $b = $days[count($days) - 1] ?? null;
     if (!$b) return null;
-    $today = date('Y-m-d', $now) === date('Y-m-d', $b['t']);
+    $today = date('Y-m-d', $now) === $b['key'];
     $open = $daily['sessionEnd'] === null ? true : $now < $daily['sessionEnd'];
-    if ($today && $open && count($bars) > 1) $b = $bars[count($bars) - 2];
-    return ['close' => round($b['close'], 2), 'date' => date('Y-m-d', $b['t'])];
+    if ($today && $open && count($days) > 1) $b = $days[count($days) - 2];
+    return ['close' => round($b['close'], 2), 'date' => $b['key']];
 }
 
 function weekly_label(int $t): string
