@@ -17,7 +17,6 @@ const steps = [
   ['logo', 'header a >> nth=0', 'Institutional-grade'],
   ['index card', 'a[href*="#/screener?index="] >> nth=0', 'Index screener'],
   ['header Weekly Targets', 'header nav >> a[href="#/weekly-targets"]', 'Weekly index targets'],
-  ['header Methodology', 'header nav >> a[href="#/methodology"]', 'Methodology'],
 ];
 
 (async () => {

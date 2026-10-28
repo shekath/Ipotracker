@@ -5,7 +5,6 @@ import Stocks from './pages/Stocks';
 import StockDetail from './pages/StockDetail';
 import Ipos from './pages/Ipos';
 import IpoDetail from './pages/IpoDetail';
-import Methodology from './pages/Methodology';
 import Screener from './pages/Screener';
 import WeeklyTargets from './pages/WeeklyTargets';
 import NotFound from './pages/NotFound';
@@ -23,7 +22,6 @@ export default function App() {
           <Route path="ipo" element={<Ipos />} />
           <Route path="ipo/:id" element={<IpoDetail />} />
           <Route path="weekly-targets" element={<WeeklyTargets />} />
-          <Route path="methodology" element={<Methodology />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

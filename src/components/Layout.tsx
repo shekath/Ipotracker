@@ -1,7 +1,7 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import clsx from 'clsx';
-import { BarChart3, BookOpen, LayoutDashboard, Monitor, Moon, Rocket, SlidersHorizontal, Sun, Target } from 'lucide-react';
+import { BarChart3, LayoutDashboard, Monitor, Moon, Rocket, SlidersHorizontal, Sun, Target } from 'lucide-react';
 import { useTheme, type ThemePref } from '../lib/theme';
 
 // `short` is shown on medium screens, `mobile` in the bottom tab bar.
@@ -11,7 +11,6 @@ const nav: { to: string; label: string; short?: string; mobile?: string; icon: t
   { to: '/screener', label: 'Screener', icon: SlidersHorizontal },
   { to: '/ipo', label: 'IPOs', icon: Rocket },
   { to: '/weekly-targets', label: 'Weekly Index Targets', short: 'Weekly Targets', mobile: 'Targets', icon: Target },
-  { to: '/methodology', label: 'Methodology', short: 'Method', mobile: 'Method', icon: BookOpen },
 ];
 
 function ThemeSwitch() {
@@ -89,7 +88,7 @@ export default function Layout() {
       </footer>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur-xl md:hidden" aria-label="Primary">
-        <div className="grid grid-cols-6">
+        <div className="grid grid-cols-5">
           {nav.map(({ to, label, mobile, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium', isActive ? 'text-brand' : 'text-sub')}>
               <Icon size={20} />
