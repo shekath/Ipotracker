@@ -3,12 +3,13 @@ import { Star } from 'lucide-react';
 import clsx from 'clsx';
 import type { LiveStock, FeedStatus } from '../lib/live';
 import { ChangeTag, LiveDot } from './live';
+import { Flag } from './Flag';
 import { Badge, ScoreRing } from './ui';
 import { change, fmtMcap, fmtPrice, pct } from '../lib/format';
 import { overallScore, ratingTone } from '../lib/scoring';
 import { useWatchlist } from '../lib/watchlist';
 
-export const flag = (m: 'IN' | 'US') => (m === 'IN' ? '🇮🇳' : '🇺🇸');
+export const flag = (m: 'IN' | 'US') => <Flag market={m} />;
 
 export function WatchButton({ id, className }: { id: string; className?: string }) {
   const { has, toggle } = useWatchlist();

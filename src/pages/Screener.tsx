@@ -6,7 +6,8 @@ import { stocks } from '../data';
 import { Badge, EmptyState, Segmented } from '../components/ui';
 import { timeAgo } from '../components/live';
 import { useIndexDefs, useScreener } from '../lib/screener';
-import { marketTabs, useMarketPref } from '../lib/marketPref';
+import { useMarketPref } from '../lib/marketPref';
+import { marketTabs } from '../components/Flag';
 import { pct } from '../lib/format';
 import type { Market, ScreenerRow } from '../types';
 

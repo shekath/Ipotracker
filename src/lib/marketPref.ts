@@ -31,8 +31,3 @@ export function useMarketPref(): [Market, (m: Market) => void] {
   }, []);
   return [m, set];
 }
-
-export const marketTabs: { value: Market; label: string }[] = [
-  { value: 'IN', label: '🇮🇳 India' },
-  { value: 'US', label: '🇺🇸 US' },
-];

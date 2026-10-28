@@ -11,7 +11,8 @@ import { ipoStatus, overallScore } from '../lib/scoring';
 import { useIpoViews } from '../lib/useIpoViews';
 import { useLiveStocks } from '../lib/live';
 import { LiveDot } from '../components/live';
-import { marketTabs, useMarketPref } from '../lib/marketPref';
+import { useMarketPref } from '../lib/marketPref';
+import { Flag, marketTabs } from '../components/Flag';
 import { useIndexDefs } from '../lib/screener';
 
 export default function Dashboard() {
@@ -56,7 +57,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-12">
       <div className="-mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-sub">Showing <span className="font-semibold text-fg">{isIN ? 'Indian' : 'US'}</span> markets</div>
+        <div className="flex items-center gap-2 text-sm text-sub"><Flag market={market} className="h-4 w-6" /> Showing <span className="font-semibold text-fg">{isIN ? 'Indian' : 'US'}</span> markets</div>
         <Segmented value={market} onChange={setMarket} options={marketTabs} />
       </div>
 
