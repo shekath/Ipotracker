@@ -10,7 +10,8 @@ import { overallScore, ratingTone } from '../lib/scoring';
 import { useWatchlist } from '../lib/watchlist';
 import { useLiveStocks } from '../lib/live';
 import { ChangeTag, LiveDot } from '../components/live';
-import { marketTabs, useMarketPref } from '../lib/marketPref';
+import { useMarketPref } from '../lib/marketPref';
+import { marketTabs } from '../components/Flag';
 import type { Market, Rating } from '../types';
 
 type SortKey = 'upside' | 'score' | 'mcap' | 'pe' | 'growth' | 'roe';
