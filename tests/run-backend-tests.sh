@@ -78,6 +78,22 @@ A2=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=allus")
 [ "$(echo "$A2" | j 'count(array_unique(array_column($d["rows"],"symbol")))')" = "37" ] || fail "no duplicates"
 echo "ok screener"
 
+W=$(curl -s "http://127.0.0.1:8098/api/weekly.php")
+[ "$(echo "$W" | j 'implode(",", array_keys($d["indices"]))')" = '"NIFTY,BANKNIFTY,SENSEX"' ] || fail "weekly indices: $(echo "$W" | head -c 300)"
+[ "$(echo "$W" | j '$d["indices"]["NIFTY"]["prev"]["high"] > $d["indices"]["NIFTY"]["prev"]["low"]')" = "true" ] || fail "weekly prev high/low"
+[ "$(echo "$W" | j '$d["indices"]["NIFTY"]["prev"]["vixHigh"] >= $d["indices"]["NIFTY"]["prev"]["vixLow"]')" = "true" ] || fail "weekly vix"
+[ "$(echo "$W" | j 'is_float($d["indices"]["SENSEX"]["prevDay"]["close"]) || is_int($d["indices"]["SENSEX"]["prevDay"]["close"])')" = "true" ] || fail "weekly prevDay"
+# Week split with fixed dates (IST): Wed 28 Oct 2026 -> previous week is 19-23 Oct; Sat 31 Oct -> the week just ended.
+SPLIT=$(ML_CONFIG_LOCAL="$TMP/config.local.php" php -r 'require "public/api/lib/bootstrap.php"; require "public/api/lib/weekly.php";
+  $mon19 = strtotime("2026-10-19 09:15"); $mon26 = strtotime("2026-10-26 09:15");
+  $bars = [["t"=>$mon19,"high"=>2,"low"=>1,"close"=>1.5,"open"=>1], ["t"=>$mon26,"high"=>3,"low"=>2,"close"=>2.5,"open"=>2]];
+  [$p1, $c1] = weekly_split($bars, strtotime("2026-10-28 12:00")); [$p2, $c2] = weekly_split($bars, strtotime("2026-10-31 12:00"));
+  $daily = ["bars"=>[["t"=>strtotime("2026-10-27 09:15"),"close"=>10.0], ["t"=>strtotime("2026-10-28 09:15"),"close"=>11.0]], "sessionEnd"=>strtotime("2026-10-28 15:30")];
+  echo json_encode([$p1["t"]===$mon19 && $c1["t"]===$mon26, $p2["t"]===$mon26 && $c2===null, weekly_label($mon19),
+    weekly_prev_day($daily, strtotime("2026-10-28 12:00"))["date"], weekly_prev_day($daily, strtotime("2026-10-28 16:00"))["date"]]);')
+[ "$SPLIT" = '[true,true,"19 Oct \u2013 23 Oct 2026","2026-10-27","2026-10-28"]' ] || fail "weekly split: $SPLIT"
+echo "ok weekly"
+
 curl -s "http://127.0.0.1:8098/api/health.php" | j '$d["dataDirWritable"]' | grep -q true || fail "health"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/lib/http.php")" != "500" ] || true
 echo "ALL BACKEND TESTS PASSED"
