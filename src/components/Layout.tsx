@@ -1,15 +1,17 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import clsx from 'clsx';
-import { BarChart3, BookOpen, LayoutDashboard, Monitor, Moon, Rocket, SlidersHorizontal, Sun } from 'lucide-react';
+import { BarChart3, BookOpen, LayoutDashboard, Monitor, Moon, Rocket, SlidersHorizontal, Sun, Target } from 'lucide-react';
 import { useTheme, type ThemePref } from '../lib/theme';
 
-const nav = [
+// `short` is shown on medium screens, `mobile` in the bottom tab bar.
+const nav: { to: string; label: string; short?: string; mobile?: string; icon: typeof Rocket; end?: boolean }[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/stocks', label: 'Stocks', icon: BarChart3 },
   { to: '/screener', label: 'Screener', icon: SlidersHorizontal },
   { to: '/ipo', label: 'IPOs', icon: Rocket },
-  { to: '/methodology', label: 'Methodology', icon: BookOpen },
+  { to: '/weekly-targets', label: 'Weekly Index Targets', short: 'Weekly Targets', mobile: 'Targets', icon: Target },
+  { to: '/methodology', label: 'Methodology', short: 'Method', mobile: 'Method', icon: BookOpen },
 ];
 
 function ThemeSwitch() {
@@ -63,9 +65,9 @@ export default function Layout() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Logo />
           <nav className="hidden items-center gap-1 md:flex">
-            {nav.map(({ to, label, end }) => (
-              <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('rounded-lg px-3.5 py-2 text-sm font-medium transition-colors', isActive ? 'bg-muted text-fg' : 'text-sub hover:text-fg')}>
-                {label}
+            {nav.map(({ to, label, short, end }) => (
+              <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors lg:px-3.5', isActive ? 'bg-muted text-fg' : 'text-sub hover:text-fg')}>
+                {short ? <><span className="xl:hidden">{short}</span><span className="hidden xl:inline">{label}</span></> : label}
               </NavLink>
             ))}
           </nav>
@@ -87,11 +89,11 @@ export default function Layout() {
       </footer>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur-xl md:hidden" aria-label="Primary">
-        <div className="grid grid-cols-5">
-          {nav.map(({ to, label, icon: Icon, end }) => (
+        <div className="grid grid-cols-6">
+          {nav.map(({ to, label, mobile, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium', isActive ? 'text-brand' : 'text-sub')}>
               <Icon size={20} />
-              {label === 'Methodology' ? 'Method' : label}
+              {mobile ?? label}
             </NavLink>
           ))}
         </div>
