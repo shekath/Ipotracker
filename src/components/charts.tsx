@@ -143,6 +143,12 @@ function Marker({ at, label, cls, top }: { at: number; label: string; cls: strin
   );
 }
 
+/** Compact price range, e.g. "₹1,440–1,490" or "$440–480" (no decimals on whole numbers). */
+function fmtRange(lo: number, hi: number, market: Market) {
+  const n = (v: number) => v.toLocaleString(market === 'IN' ? 'en-IN' : 'en-US', { maximumFractionDigits: Number.isInteger(v) ? 0 : 2 });
+  return `${market === 'IN' ? '₹' : '$'}${n(lo)}–${n(hi)}`;
+}
+
 /** Visual trade plan: stop loss, entry zone, reference price and target on one axis. */
 export function TradeLadder({ levels, price, market }: { levels: TradeLevels; price: number; market: Market }) {
   const pts = [levels.stopLoss, levels.target, levels.entry[0], levels.entry[1], price];
@@ -153,25 +159,48 @@ export function TradeLadder({ levels, price, market }: { levels: TradeLevels; pr
   const bearish = levels.target < price;
   const upside = change(price, levels.target);
   const risk = change(price, levels.stopLoss);
-  const rr = Math.abs(upside / risk);
+  // A plan whose target sits below its entry zone is an exit (sell into strength) plan.
+  const sellPlan = levels.target < levels.entry[0];
+  const [lo1, hi1] = levels.entry;
+  const mid = (lo1 + hi1) / 2;
+  // Reward-to-risk is measured from the planned entry, not from wherever the price is now.
+  const rr = Math.abs(levels.target - mid) / Math.max(1e-9, Math.abs(mid - levels.stopLoss));
+
+  let zone: { text: string; tone: string };
+  if (sellPlan) {
+    if (price >= levels.stopLoss) zone = { text: 'Above stop: thesis invalidated', tone: 'text-down' };
+    else if (price >= lo1 && price <= hi1) zone = { text: 'In exit zone now', tone: 'text-up' };
+    else if (price < lo1) zone = { text: `${pct(change(price, lo1))} to zone: wait for a bounce`, tone: 'text-warn' };
+    else zone = { text: 'Above zone: better exit than planned', tone: 'text-up' };
+  } else {
+    if (price <= levels.stopLoss) zone = { text: 'Below stop loss: avoid', tone: 'text-down' };
+    else if (price >= lo1 && price <= hi1) zone = { text: 'In buy zone now', tone: 'text-up' };
+    else if (price > hi1) zone = { text: `${pct(change(hi1, price))} above zone: wait for a dip`, tone: 'text-warn' };
+    else zone = { text: 'Below zone: better than planned', tone: 'text-up' };
+  }
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-xl border border-brand/40 bg-brand/5 p-3">
+          <div className="label">{sellPlan ? 'Sell / exit at' : 'Buy at'}</div>
+          <div className="num mt-1 whitespace-nowrap font-semibold">{fmtRange(lo1, hi1, market)}</div>
+          <div className={clsx('text-xs font-medium', zone.tone)}>{zone.text}</div>
+        </div>
         <div className="rounded-xl bg-muted/60 p-3">
           <div className="label">Target</div>
           <div className="num mt-1 font-semibold">{fmtPrice(levels.target, market)}</div>
-          <div className={clsx('num text-xs font-medium', upside >= 0 ? 'text-up' : 'text-down')}>{pct(upside)}</div>
+          <div className={clsx('num text-xs font-medium', upside >= 0 ? 'text-up' : 'text-down')}>{pct(upside)} from CMP</div>
         </div>
         <div className="rounded-xl bg-muted/60 p-3">
           <div className="label">Stop loss</div>
           <div className="num mt-1 font-semibold">{fmtPrice(levels.stopLoss, market)}</div>
-          <div className={clsx('num text-xs font-medium', bearish ? 'text-warn' : 'text-down')}>{pct(risk)}</div>
+          <div className={clsx('num text-xs font-medium', bearish ? 'text-warn' : 'text-down')}>{pct(risk)} from CMP</div>
         </div>
         <div className="rounded-xl bg-muted/60 p-3">
           <div className="label">Reward : Risk</div>
           <div className="num mt-1 font-semibold">{rr.toFixed(1)}x</div>
-          <div className="text-xs text-sub">{levels.horizon}</div>
+          <div className="text-xs text-sub">From entry · {levels.horizon}</div>
         </div>
       </div>
 
@@ -190,7 +219,7 @@ export function TradeLadder({ levels, price, market }: { levels: TradeLevels; pr
         <Tick at={pos(price)} label="CMP" cls="bg-fg" above />
       </div>
       <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-sub">
-        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm border border-dashed border-brand/70 bg-brand/10" /> Entry {fmtPrice(levels.entry[0], market)} – {fmtPrice(levels.entry[1], market)}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm border border-dashed border-brand/70 bg-brand/10" /> {levels.target < levels.entry[0] ? 'Exit' : 'Buy'} zone {fmtRange(levels.entry[0], levels.entry[1], market)}</span>
       </div>
       <p className="mt-3 text-sm leading-relaxed text-sub">{levels.rationale}</p>
     </div>
