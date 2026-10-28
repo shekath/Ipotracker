@@ -1,0 +1,6 @@
+# Only the cron script is reachable, and it requires a token from config.local.php.
+<FilesMatch "^(?!update-ipos\.php$).*">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>
