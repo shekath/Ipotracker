@@ -125,10 +125,7 @@ export interface WeeklyFeedItem {
 }
 export type WeeklyFeed = Record<IndexKey, WeeklyFeedItem>;
 
-/** The default "current price": the last finished session's close, then the live price, then last week's close. */
+/** The default "current price" (and what Reset returns to): the previous weekly candle's close. */
 export function defaultPrice(d: WeeklyFeedItem | undefined): number {
-  if (!d) return NaN;
-  if (d.prevDay && finite(d.prevDay.close)) return d.prevDay.close;
-  if (d.current && finite(d.current.price)) return d.current.price;
-  return d.prev.close;
+  return d && finite(d.prev.close) ? d.prev.close : NaN;
 }

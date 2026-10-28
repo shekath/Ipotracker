@@ -120,7 +120,7 @@ export default function WeeklyTargets() {
 
       {calc?.r && (
         <>
-          <Hero name={INDEX_NAMES[index]} r={calc.r} s={calc.s} price={v.price} def={def} prevDay={item?.prevDay ?? null} onPrice={setPrice} onReset={resetPrice} />
+          <Hero name={INDEX_NAMES[index]} r={calc.r} s={calc.s} price={v.price} def={def} weekLabel={item?.prevWeekLabel ?? ''} livePrice={live ? item?.current?.price : undefined} onPrice={setPrice} onReset={resetPrice} />
 
           <section className="card card-pad">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -189,8 +189,8 @@ function Fx({ name, f, v, hot }: { name: string; f: string; v: string; hot?: boo
 }
 
 // ---------- Hero ----------
-function Hero({ name, r, s, price, def, prevDay, onPrice, onReset }: {
-  name: string; r: WeeklyResult; s: Signal | null; price: number; def: number; prevDay: { close: number; date: string } | null;
+function Hero({ name, r, s, price, def, weekLabel, livePrice, onPrice, onReset }: {
+  name: string; r: WeeklyResult; s: Signal | null; price: number; def: number; weekLabel: string; livePrice?: number;
   onPrice: (p: number) => void; onReset: () => void;
 }) {
   const [text, setText] = useState<string | null>(null);
@@ -214,15 +214,18 @@ function Hero({ name, r, s, price, def, prevDay, onPrice, onReset }: {
           onBlur={() => setText(null)}
           onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
         />
-        <div>
+        <div className="flex flex-wrap gap-2">
           <button className="chip" disabled={isDef || !Number.isFinite(def)} onClick={onReset} style={isDef ? { opacity: 0.5, cursor: 'default' } : undefined}>
-            <RotateCcw size={13} /> Reset to close {fmt(def)}
+            <RotateCcw size={13} /> Reset to weekly close {fmt(def)}
           </button>
+          {livePrice !== undefined && Number.isFinite(livePrice) && Math.abs(price - livePrice) >= 0.005 && (
+            <button className="chip" onClick={() => onPrice(livePrice)}>Use live price {fmt(livePrice)}</button>
+          )}
         </div>
         <span className="text-xs text-sub">
-          {isDef && prevDay
-            ? `Default: close on ${new Date(prevDay.date + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}. Type or drag to try another price.`
-            : 'Your what-if price. Reset to go back to the close.'}
+          {isDef
+            ? `Default: last week's close${weekLabel ? ` (${weekLabel})` : ''}. Type or drag to try another price.`
+            : "Your what-if price. Reset to go back to last week's close."}
         </span>
       </div>
 
