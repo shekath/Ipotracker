@@ -12,7 +12,9 @@ const BASE_WORD: Record<Base, string> = { avg: 'average', high: 'high', low: 'lo
 const STEP_LABEL: Record<Divisor, string> = { 4: 'Range ÷ 4', 2: 'Range ÷ 2', 1: 'Full range' };
 const C = { up: 'rgb(var(--up))', down: 'rgb(var(--down))', pivot: 'rgb(var(--warn))', fg: 'rgb(var(--fg))', sub: 'rgb(var(--sub))', surface: 'rgb(var(--surface))', line: 'rgb(var(--line))', brand: 'rgb(var(--brand))' };
 
-type Inputs = PrevWeek & { price: number; wkHigh: number; wkLow: number };
+type Inputs = PrevWeek & { price: number; curClose: number; wkHigh: number; wkLow: number };
+/** Where the price used for the verdict came from: last week's close (default), the current close, or a what-if. */
+type PriceSrc = 'prev' | 'current' | 'whatif';
 type Edits = Partial<Record<keyof Inputs, number>>;
 
 const fmt = (n: number, dp = 2) => (Number.isFinite(n) ? n.toLocaleString('en-IN', { minimumFractionDigits: dp, maximumFractionDigits: dp }) : '—');
@@ -60,13 +62,18 @@ export default function WeeklyTargets() {
 
   const item = feed?.[index];
   const loaded: Partial<Inputs> = item
-    ? { ...item.prev, price: defaultPrice(item), wkHigh: item.current?.high ?? NaN, wkLow: item.current?.low ?? NaN }
+    ? { ...item.prev, price: defaultPrice(item), curClose: item.current?.price ?? item.prevDay?.close ?? NaN, wkHigh: item.current?.high ?? NaN, wkLow: item.current?.low ?? NaN }
     : {};
   const v = { ...loaded, ...(edits[index] ?? {}) } as Inputs;
   const def = defaultPrice(item);
   const setField = (f: keyof Inputs, n: number) => setEdits((e) => ({ ...e, [index]: { ...(e[index] ?? {}), [f]: n } }));
-  const resetPrice = () => setEdits((e) => { const cur = { ...(e[index] ?? {}) }; delete cur.price; return { ...e, [index]: cur }; });
-  const resetAll = () => setEdits((e) => ({ ...e, [index]: {} }));
+  const [srcs, setSrcs] = useState<Partial<Record<IndexKey, PriceSrc>>>({});
+  const src: PriceSrc = edits[index]?.price === undefined ? 'prev' : srcs[index] ?? 'whatif';
+  const usePrice = (p: number, from: PriceSrc) => { setField('price', Math.round(p * 100) / 100); setSrcs((m) => ({ ...m, [index]: from })); };
+  const resetPrice = () => { setEdits((e) => { const cur = { ...(e[index] ?? {}) }; delete cur.price; return { ...e, [index]: cur }; }); setSrcs((m) => ({ ...m, [index]: 'prev' })); };
+  const resetAll = () => { setEdits((e) => ({ ...e, [index]: {} })); setSrcs((m) => ({ ...m, [index]: 'prev' })); };
+  // Typing the current close in Edit inputs also makes it the price the verdict uses.
+  const onPanelField = (f: keyof Inputs, n: number) => { setField(f, n); if (f === 'curClose' && Number.isFinite(n)) usePrice(n, 'current'); };
 
   const calc = useMemo(() => {
     if (!item) return null;
@@ -83,7 +90,7 @@ export default function WeeklyTargets() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item, JSON.stringify(v), div]);
 
-  const setPrice = useCallback((p: number) => setField('price', Math.round(p * 100) / 100), // eslint-disable-next-line react-hooks/exhaustive-deps
+  const setPrice = useCallback((p: number) => usePrice(p, 'whatif'), // eslint-disable-next-line react-hooks/exhaustive-deps
     [index]);
 
   return (
@@ -120,7 +127,7 @@ export default function WeeklyTargets() {
 
       {calc?.r && (
         <>
-          <Hero name={INDEX_NAMES[index]} r={calc.r} s={calc.s} price={v.price} def={def} weekLabel={item?.prevWeekLabel ?? ''} livePrice={live ? item?.current?.price : undefined} onPrice={setPrice} onReset={resetPrice} />
+          <Hero name={INDEX_NAMES[index]} r={calc.r} s={calc.s} price={v.price} def={def} src={src} weekLabel={item?.prevWeekLabel ?? ''} curClose={v.curClose} onPrice={setPrice} onUseCurrent={() => usePrice(v.curClose, 'current')} onReset={resetPrice} />
 
           <section className="card card-pad">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -167,7 +174,7 @@ export default function WeeklyTargets() {
       {panel && (
         <InputsPanel
           title={`${INDEX_NAMES[index]}${item ? ' · last week ' + item.prevWeekLabel : ''}`}
-          v={v} err={calc?.err ?? null} onField={setField} onReset={resetAll} onClose={() => setPanel(false)}
+          v={v} err={calc?.err ?? null} onField={onPanelField} onReset={resetAll} onClose={() => setPanel(false)}
         />
       )}
     </div>
@@ -189,9 +196,9 @@ function Fx({ name, f, v, hot }: { name: string; f: string; v: string; hot?: boo
 }
 
 // ---------- Hero ----------
-function Hero({ name, r, s, price, def, weekLabel, livePrice, onPrice, onReset }: {
-  name: string; r: WeeklyResult; s: Signal | null; price: number; def: number; weekLabel: string; livePrice?: number;
-  onPrice: (p: number) => void; onReset: () => void;
+function Hero({ name, r, s, price, def, src, weekLabel, curClose, onPrice, onUseCurrent, onReset }: {
+  name: string; r: WeeklyResult; s: Signal | null; price: number; def: number; src: PriceSrc; weekLabel: string; curClose: number;
+  onPrice: (p: number) => void; onUseCurrent: () => void; onReset: () => void;
 }) {
   const [text, setText] = useState<string | null>(null);
   const isDef = Number.isFinite(def) && Math.abs(price - def) < 0.005;
@@ -203,9 +210,9 @@ function Hero({ name, r, s, price, def, weekLabel, livePrice, onPrice, onReset }
   return (
     <section className="card grid overflow-hidden lg:grid-cols-[1fr_1.3fr_1fr]" aria-label="This week at a glance">
       <div className="grid content-start gap-2 p-5 sm:p-6">
-        <span className="label">{name} · current price</span>
+        <span className="label">{name} · {isDef ? 'Previous week close' : src === 'current' ? 'Current close' : 'What-if price'}</span>
         <input
-          aria-label="Current price"
+          aria-label={isDef ? 'Previous week close' : src === 'current' ? 'Current close' : 'What-if price'}
           inputMode="decimal"
           className="num w-full border-0 border-b-2 border-line bg-transparent pb-1 text-[2.1rem] font-semibold tracking-tight outline-none focus:border-brand"
           value={text ?? fmt(price)}
@@ -218,14 +225,16 @@ function Hero({ name, r, s, price, def, weekLabel, livePrice, onPrice, onReset }
           <button className="chip" disabled={isDef || !Number.isFinite(def)} onClick={onReset} style={isDef ? { opacity: 0.5, cursor: 'default' } : undefined}>
             <RotateCcw size={13} /> Reset to weekly close {fmt(def)}
           </button>
-          {livePrice !== undefined && Number.isFinite(livePrice) && Math.abs(price - livePrice) >= 0.005 && (
-            <button className="chip" onClick={() => onPrice(livePrice)}>Use live price {fmt(livePrice)}</button>
+          {Number.isFinite(curClose) && Math.abs(price - curClose) >= 0.005 && (
+            <button className="chip" onClick={onUseCurrent}>Use current close {fmt(curClose)}</button>
           )}
         </div>
         <span className="text-xs text-sub">
           {isDef
-            ? `Default: last week's close${weekLabel ? ` (${weekLabel})` : ''}. Type or drag to try another price.`
-            : "Your what-if price. Reset to go back to last week's close."}
+            ? `Last week's close${weekLabel ? ` (${weekLabel})` : ''}. Enter the current close in Edit inputs, or type or drag to try a price.`
+            : src === 'current'
+              ? "This week's current close, from Edit inputs. Reset to go back to last week's close."
+              : "Your what-if price. Reset to go back to last week's close."}
         </span>
       </div>
 
@@ -494,6 +503,7 @@ function InputsPanel({ title, v, err, onField, onReset, onClose }: {
           {field('vixHigh', 'VIX high')}
           {field('vixLow', 'VIX low')}
           <div className="label col-span-2 mt-1">This week so far (optional)</div>
+          {field('curClose', 'Current close', true)}
           {field('wkHigh', 'High so far')}
           {field('wkLow', 'Low so far')}
         </div>
