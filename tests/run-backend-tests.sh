@@ -95,7 +95,15 @@ SPLIT=$(ML_CONFIG_LOCAL="$TMP/config.local.php" php -r 'require "public/api/lib/
   $daily = ["bars"=>[["t"=>strtotime("2026-10-27 09:15"),"open"=>9.0,"high"=>10.5,"low"=>9.0,"close"=>10.0], ["t"=>strtotime("2026-10-28 09:15"),"open"=>10.0,"high"=>11.5,"low"=>9.5,"close"=>11.0], ["t"=>strtotime("2026-10-28 15:31"),"open"=>11.0,"high"=>11.2,"low"=>10.8,"close"=>11.1]], "sessionEnd"=>strtotime("2026-10-28 15:30")];
   echo json_encode([$p1["t"]===$mon19 && $c1["t"]===$mon26, $p2["t"]===$mon26 && $c2===null, weekly_label($mon19),
     weekly_prev_day($daily, strtotime("2026-10-28 12:00"))["date"], weekly_prev_day($daily, strtotime("2026-10-28 16:00"))["date"]]);')
+ROLL=$(ML_CONFIG_LOCAL="$TMP/config.local.php" php -r 'require "public/api/lib/bootstrap.php"; require "public/api/lib/weekly.php";
+  $b = [["t"=>strtotime("2026-10-19 00:00"),"open"=>1,"high"=>23175.25,"low"=>22372,"close"=>22600], ["t"=>strtotime("2026-10-26 00:00"),"open"=>1,"high"=>22900,"low"=>22300,"close"=>22800], ["t"=>strtotime("2026-10-30 15:31"),"open"=>1,"high"=>22950,"low"=>22700,"close"=>22880]];
+  $at = fn($s) => weekly_split($b, strtotime($s))[0]["close"];
+  $d = [["t"=>strtotime("2026-12-14 00:00"),"open"=>1,"high"=>2,"low"=>1,"close"=>1.5], ["t"=>strtotime("2026-12-21 00:00"),"open"=>1,"high"=>3,"low"=>2,"close"=>2.5]];
+  $xmas = fn($s) => weekly_split($d, strtotime($s))[0]["close"];
+  echo json_encode([$at("2026-10-30 15:59"), $at("2026-10-30 16:00"), $at("2026-10-31 10:00"), weekly_last_trading_day(strtotime("2026-12-23")), $xmas("2026-12-24 15:59"), $xmas("2026-12-24 16:01"), date("Y-m-d H:i", weekly_next_rollover(strtotime("2026-10-28 21:00"))), date("Y-m-d H:i", weekly_next_rollover(strtotime("2026-10-30 16:05")))]);')
+[ "$ROLL" = '[22600,22880,22880,"2026-12-24",1.5,2.5,"2026-10-30 16:00","2026-11-06 16:00"]' ] || fail "weekly rollover: $ROLL"
 [ "$SPLIT" = '[true,true,"19 Oct \u2013 23 Oct 2026","2026-10-27","2026-10-28"]' ] || fail "weekly split: $SPLIT"
+[ "$(echo "$W" | j 'strlen($d["nextUpdate"]) > 10')" = "true" ] || fail "weekly nextUpdate"
 [ "$(echo "$W" | j 'is_bool($d["indices"]["NIFTY"]["current"]["marketOpen"] ?? true)')" = "true" ] || fail "weekly marketOpen flag"
 echo "ok weekly"
 
