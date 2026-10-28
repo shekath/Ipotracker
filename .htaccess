@@ -1,5 +1,8 @@
 # MarketLens — Apache / LiteSpeed (Hostinger, cPanel) configuration
 Options -Indexes
+
+# Hide version-control metadata (a Git deploy keeps .git inside this folder).
+RedirectMatch 404 /\.git
 DirectoryIndex index.html index.php
 
 <IfModule mod_rewrite.c>
