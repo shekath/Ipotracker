@@ -1,32 +1,42 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Briefcase, Calculator, CircleDollarSign, Gauge, Handshake, LineChart, Newspaper, ShieldAlert, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Check, X } from 'lucide-react';
 import clsx from 'clsx';
 import { findStock, stocks, STOCK_SNAPSHOT } from '../data';
-import { Badge, Bar, BulletList, ScoreRing, SectionHeader, Segmented, Stat, scoreTone, type Tone } from '../components/ui';
-import { AnnualChart, MixDonut, QuarterlyChart, RangeBar, TradeLadder } from '../components/charts';
-import { WatchButton, flag } from '../components/StockCard';
+import { Badge, CardHead, ConvictionMeter, Segmented, SegBar, type Tone } from '../components/ui';
+import { AnnualChart, QuarterlyChart } from '../components/charts';
+import { WatchButton } from '../components/StockCard';
+import TradeTicket from '../components/TradeTicket';
 import { change, finUnit, fmtDate, fmtFin, fmtMcap, fmtPrice, pct } from '../lib/format';
 import { overallScore, ratingTone, stockPillars } from '../lib/scoring';
-import type { Impact, NewsKind, Stock } from '../types';
+import type { Impact, Stock } from '../types';
 import NotFound from './NotFound';
-import { stockId, useLiveStocks } from '../lib/live';
+import { stockId, useLiveStocks, type LiveStock } from '../lib/live';
 import { ChangeTag, LiveDot, PriceChart, timeAgo } from '../components/live';
 
 const sections = [
-  { id: 'chart', label: 'Price chart' },
-  { id: 'verdict', label: 'Verdict & targets' },
+  { id: 'overview', label: 'Overview' },
   { id: 'fundamentals', label: 'Fundamentals' },
-  { id: 'business', label: 'Business model' },
-  { id: 'quarterly', label: 'Quarterly results' },
-  { id: 'forecast', label: 'Growth forecast' },
+  { id: 'results', label: 'Results' },
+  { id: 'forecast', label: 'Forecast' },
   { id: 'news', label: 'News & deals' },
-  { id: 'risks', label: 'Risks' },
   { id: 'peers', label: 'Peers' },
 ];
 
 const impactTone: Record<Impact, Tone> = { positive: 'up', neutral: 'neutral', negative: 'down' };
-const kindIcon: Record<NewsKind, typeof Newspaper> = { Results: LineChart, Deal: Handshake, Corporate: Briefcase, Regulatory: ShieldAlert, Product: TrendingUp };
+const impactDot: Record<Impact, string> = { positive: 'bg-up', neutral: 'bg-sub', negative: 'bg-down' };
+const mixColors = ['bg-fg', 'bg-brand', 'bg-brand/50', 'bg-line2', 'bg-sub/50', 'bg-up/60'];
+
+/** First sentence or two of the thesis, for the plain-words verdict line. */
+function shortThesis(t: string) {
+  const parts = t.match(/[^.!?]+[.!?]+(\s|$)/g) ?? [t];
+  let out = '';
+  for (const p of parts) {
+    if ((out + p).length > 240 && out) break;
+    out += p;
+  }
+  return out.trim();
+}
 
 export default function StockDetail() {
   const { market, symbol } = useParams();
@@ -35,30 +45,27 @@ export default function StockDetail() {
   return <StockView key={s.market + s.symbol} s={s} />;
 }
 
+/** Percentile of `v` among `all` (0–100), higher = better. */
+function rank(v: number, all: number[], lowerIsBetter = false) {
+  const valid = all.filter((x) => isFinite(x));
+  if (valid.length < 3) return undefined;
+  const better = valid.filter((x) => (lowerIsBetter ? x > v : x < v)).length;
+  return Math.round((better / (valid.length - 1)) * 100);
+}
+
 function StockView({ s: base }: { s: Stock }) {
   const one = useMemo(() => [base], [base]);
   const { stocks: [s], status } = useLiveStocks(one);
   const q = s.quote;
   const [horizon, setHorizon] = useState<'short' | 'long'>('short');
-  const [cmpInput, setCmpInput] = useState('');
-  const cmp = Number(cmpInput) > 0 ? Number(cmpInput) : s.price;
+  const [qView, setQView] = useState<'table' | 'chart'>('table');
   const levels = horizon === 'short' ? s.shortTerm : s.longTerm;
   const pillars = stockPillars(s);
   const score = overallScore(s);
-  const upside = change(cmp, s.fairValue);
+  const upside = change(s.price, s.fairValue);
   const m = s.metrics;
   const unit = finUnit(s.market);
-
-  const levelAlert = useMemo(() => {
-    if (!cmpInput && !q) return null;
-    const bearish = levels.target < levels.entry[0];
-    const slHit = bearish ? cmp >= levels.stopLoss : cmp <= levels.stopLoss;
-    const tgtHit = bearish ? cmp <= levels.target : cmp >= levels.target;
-    if (slHit) return { tone: 'down' as const, text: 'Price has breached the stop loss — thesis invalidated for this horizon. Re-evaluate before acting.' };
-    if (tgtHit) return { tone: 'up' as const, text: 'Price has reached the target — consider booking profits or trailing the stop.' };
-    if (cmp < levels.entry[0] || cmp > levels.entry[1]) return { tone: 'warn' as const, text: 'Price is outside the suggested entry zone — wait for a better entry or size smaller.' };
-    return { tone: 'up' as const, text: 'Price is inside the suggested entry zone.' };
-  }, [cmp, cmpInput, q, levels]);
+  const isIN = s.market === 'IN';
 
   const qs = s.quarters;
   const last = qs[qs.length - 1];
@@ -73,319 +80,305 @@ function StockView({ s: base }: { s: Stock }) {
   const fwdEpsCagr = yrs > 0 && lastA.eps > 0 ? (Math.pow(lastE.eps / lastA.eps, 1 / yrs) - 1) * 100 : 0;
   const fwdRevCagr = yrs > 0 ? (Math.pow(lastE.revenue / lastA.revenue, 1 / yrs) - 1) * 100 : 0;
 
-  const metricRows: { label: string; value: string; hint?: string }[] = [
-    { label: 'P/E (TTM)', value: `${m.pe.toFixed(1)}x` },
-    { label: 'Forward P/E', value: `${m.forwardPe.toFixed(1)}x` },
-    { label: 'P/B', value: `${m.pb.toFixed(1)}x` },
-    { label: 'ROE', value: `${m.roe}%` },
-    ...(m.roce ? [{ label: 'ROCE', value: `${m.roce}%` }] : []),
-    { label: s.isFinancial ? 'Leverage (A/E)' : 'Debt / Equity', value: `${m.debtEquity}x` },
-    { label: s.isFinancial ? 'PPOP margin' : 'Operating margin', value: `${m.opMargin}%` },
-    { label: 'Net margin', value: `${m.netMargin}%` },
-    { label: 'Revenue CAGR 3Y', value: pct(m.revGrowth3y, 0) },
-    { label: 'EPS CAGR 3Y', value: pct(m.epsGrowth3y, 0) },
-    { label: 'Dividend yield', value: `${m.dividendYield.toFixed(2)}%` },
-    { label: 'Beta', value: m.beta.toFixed(1) },
+  // Rank each metric against every researched stock in the same market.
+  const universe = stocks.filter((x) => x.market === s.market);
+  const marketName = isIN ? 'Indian' : 'US';
+  const metricCards: { k: string; v: string; r?: number; note: string }[] = [
+    { k: 'P/E (TTM)', v: `${m.pe.toFixed(1)}×`, r: rank(m.pe, universe.map((x) => x.metrics.pe), true), note: 'Price ÷ last 12 months’ earnings' },
+    { k: 'Forward P/E', v: `${m.forwardPe.toFixed(1)}×`, r: rank(m.forwardPe, universe.map((x) => x.metrics.forwardPe), true), note: 'Price ÷ next year’s expected earnings' },
+    { k: 'ROE', v: `${m.roe}%`, r: rank(m.roe, universe.map((x) => x.metrics.roe)), note: 'Profit earned on shareholders’ money' },
+    { k: s.isFinancial ? 'Leverage (A/E)' : 'Debt / equity', v: `${m.debtEquity}×`, r: s.isFinancial ? undefined : rank(m.debtEquity, universe.filter((x) => !x.isFinancial).map((x) => x.metrics.debtEquity), true), note: s.isFinancial ? 'Lenders run higher leverage by design' : 'Lower means a safer balance sheet' },
+    { k: 'Net margin', v: `${m.netMargin}%`, r: rank(m.netMargin, universe.map((x) => x.metrics.netMargin)), note: 'Profit kept from each ₹100 of sales'.replace('₹', isIN ? '₹' : '$') },
+    { k: 'Revenue CAGR 3Y', v: pct(m.revGrowth3y, 0), r: rank(m.revGrowth3y, universe.map((x) => x.metrics.revGrowth3y)), note: 'Average yearly sales growth' },
+    { k: 'EPS CAGR 3Y', v: pct(m.epsGrowth3y, 0), r: rank(m.epsGrowth3y, universe.map((x) => x.metrics.epsGrowth3y)), note: 'Average yearly earnings growth' },
+    { k: 'Dividend yield', v: `${m.dividendYield.toFixed(2)}%`, r: rank(m.dividendYield, universe.map((x) => x.metrics.dividendYield)), note: 'Yearly dividend ÷ price' },
   ];
+
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   return (
     <div>
-      <Link to={`/stocks?market=${s.market}`} className="btn-ghost -ml-3 mb-4"><ArrowLeft size={16} /> All {s.market === 'IN' ? 'Indian' : 'US'} stocks</Link>
+      <div className="mb-3 flex items-center gap-1.5 text-[13px] text-sub">
+        <Link to={`/stocks?market=${s.market}`} className="hover:text-fg">Stocks</Link> /
+        <Link to={`/stocks?market=${s.market}&sector=${encodeURIComponent(s.sector)}`} className="hover:text-fg">{s.sector}</Link> /
+        <span className="truncate text-fg">{s.name}</span>
+      </div>
 
-      {/* Header */}
-      <div className="card card-pad">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <div className="card">
+        {/* Header */}
+        <div className="grid gap-5 px-4 pt-5 sm:px-6 md:grid-cols-[1fr_auto] md:items-end">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-sm text-sub">
-              <span>{flag(s.market)}</span>
-              <span className="font-medium">{s.exchange}: {s.symbol}</span>
-              <span>·</span>
-              <Link to={`/stocks?market=${s.market}&sector=${encodeURIComponent(s.sector)}`} className="hover:text-brand">{s.sector}</Link>
-            </div>
-            <div className="mt-1.5 flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{s.name}</h1>
-              <WatchButton id={`${s.market}:${s.symbol}`} />
-            </div>
-            <p className="mt-1 text-sm text-sub">{s.industry}</p>
-            <div className="mt-5 flex flex-wrap items-end gap-x-6 gap-y-3">
-              <div>
-                <div className="flex flex-wrap items-baseline gap-x-3">
-                  <span className="num text-4xl font-bold tracking-tight">{fmtPrice(s.price, s.market)}</span>
-                  {q && <span className={q.change >= 0 ? 'num text-base font-semibold text-up' : 'num text-base font-semibold text-down'}>{q.change >= 0 ? '+' : ''}{q.change.toFixed(2)}</span>}
-                  <ChangeTag q={q} className="!text-base" />
-                </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-sub">
-                  <LiveDot status={status} quote={q} />
-                  <span>{q ? `· ${q.source} · ${timeAgo(q.time)}${q.dayLow && q.dayHigh ? ` · Day ${fmtPrice(q.dayLow, s.market)} – ${fmtPrice(q.dayHigh, s.market)}` : ''}` : `· Reference price, ${STOCK_SNAPSHOT} snapshot`}</span>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 pb-1">
-                <Badge tone={ratingTone[s.rating]} className="!text-sm !px-3 !py-1">{s.rating}</Badge>
-                <Badge tone="neutral" className="!text-sm !px-3 !py-1">{s.conviction} conviction</Badge>
-              </div>
+            <h1 className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-2xl font-semibold tracking-[-0.025em]">
+              {s.name}
+              <span className="tk font-medium text-sub">{s.symbol} · {s.exchange}</span>
+              <WatchButton id={stockId(s)} />
+            </h1>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {[s.industry, `Mcap ${fmtMcap(s.marketCap, s.market)}`, `Score ${score}/100`].map((t) => (
+                <span key={t} className="rounded-md border border-line bg-muted px-2 py-0.5 text-[12.5px] text-fg2">{t}</span>
+              ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4 lg:w-[30rem] lg:grid-cols-2">
-            <Stat label="Market cap" value={fmtMcap(s.marketCap, s.market)} />
-            <Stat label="Fair value" value={fmtPrice(s.fairValue, s.market)} hint={<span className={upside >= 0 ? 'text-up' : 'text-down'}>{pct(upside)} from price</span>} />
-            <Stat label="P/E · Fwd" value={`${m.pe.toFixed(0)}x · ${m.forwardPe.toFixed(0)}x`} />
-            <div className="flex items-center gap-3">
-              <ScoreRing score={score} size={56} />
-              <div className="text-xs text-sub">Composite<br />score</div>
+          <div className="md:text-right">
+            <div className="text-[34px] font-semibold leading-none tracking-[-0.035em] tabular-nums">{fmtPrice(s.price, s.market)}</div>
+            <div className="mt-1.5"><ChangeTag q={q} abs className="!text-[13.5px]" /></div>
+            <div className="mt-1.5 flex items-center gap-2 text-xs text-sub md:justify-end">
+              <LiveDot status={status} quote={q} />
+              <span>{q ? `${timeAgo(q.time)}${q.volume ? ` · Vol ${(q.volume / 1e6).toFixed(1)}M` : ''}` : `${STOCK_SNAPSHOT} snapshot`}</span>
             </div>
           </div>
         </div>
-        {s.snapshotMismatch && (
-          <div className="mt-5 flex gap-2 rounded-xl bg-warn/10 p-3 text-xs leading-relaxed text-warn">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-            The live price differs sharply from our research snapshot ({fmtPrice(base.price, s.market)}) — possibly a split, bonus or major move. Valuation metrics and targets below are from the snapshot and need re-checking.
-          </div>
-        )}
-        <div className="mt-6 border-t border-line pt-5">
-          <RangeBar low={s.low52} high={s.high52} price={s.price} fair={s.fairValue} market={s.market} />
-        </div>
-      </div>
-
-      {/* Section nav */}
-      <div className="sticky top-16 z-30 -mx-4 mt-6 border-b border-line bg-bg/85 px-4 backdrop-blur-xl sm:mx-0 sm:rounded-xl sm:border sm:px-2">
-        <div className="flex gap-1 overflow-x-auto py-2 no-scrollbar">
-          {sections.filter((x) => x.id !== 'peers' || peers.length).map((x) => (
-            <a key={x.id} href={`#${x.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth' }); }} className="whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-sub hover:bg-muted hover:text-fg">
-              {x.label}
-            </a>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-8 space-y-10">
-        <section>
-          <SectionHeader id="chart" title="Price chart" subtitle="Daily closes from the live data feed" />
-          <div className="card card-pad">
-            <PriceChart id={stockId(s)} market={s.market} reference={[{ label: 'Fair value', value: s.fairValue }, { label: 'ST target', value: s.shortTerm.target }, { label: 'LT target', value: s.longTerm.target }]} />
-          </div>
-        </section>
 
         {/* Verdict */}
-        <section>
-          <SectionHeader id="verdict" title="Analyst verdict & trade plan" subtitle="Targets and stop losses for short-term and long-term horizons" />
-          <div className="grid gap-6 lg:grid-cols-5">
-            <div className="card card-pad lg:col-span-2">
-              <div className="flex items-center gap-2 text-sm font-semibold"><Gauge size={16} className="text-brand" /> Investment thesis</div>
-              <p className="mt-3 text-[15px] leading-relaxed">{s.thesis}</p>
-              <div className="mt-6 rounded-xl border border-line p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold"><Calculator size={16} className="text-brand" /> What-if price</div>
-                <p className="mt-1 text-xs text-sub">{q ? 'Levels use the live price. Try another price to test entries and exits.' : 'Enter today’s market price to re-check upside and level status.'}</p>
-                <div className="relative mt-3">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-sub">{s.market === 'IN' ? '₹' : '$'}</span>
-                  <input type="number" inputMode="decimal" min="0" step="any" className="input num pl-8" placeholder={String(s.price)} value={cmpInput} onChange={(e) => setCmpInput(e.target.value)} aria-label="Current market price" />
-                </div>
-                {levelAlert && (
-                  <div className={clsx('mt-3 flex gap-2 rounded-lg p-3 text-xs leading-relaxed', levelAlert.tone === 'down' ? 'bg-down/10 text-down' : levelAlert.tone === 'warn' ? 'bg-warn/10 text-warn' : 'bg-up/10 text-up')}>
-                    <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {levelAlert.text}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="card card-pad lg:col-span-3">
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm font-semibold"><CircleDollarSign size={16} className="text-brand" /> Trade plan</div>
-                <Segmented size="sm" value={horizon} onChange={setHorizon} options={[{ value: 'short', label: 'Short term' }, { value: 'long', label: 'Long term' }]} />
-              </div>
-              <TradeLadder levels={levels} price={cmp} market={s.market} />
-            </div>
+        <div className="mx-4 mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[10px] border border-line bg-muted px-4 py-3.5 sm:mx-6">
+          <Badge tone={ratingTone[s.rating]} className="!h-7 !text-[13.5px]">{s.rating}</Badge>
+          <div>
+            <div className="label mb-1">CONVICTION · {s.conviction.toUpperCase()}</div>
+            <ConvictionMeter level={s.conviction} />
           </div>
-        </section>
+          <p className="min-w-[16rem] flex-1 text-sm text-fg2">
+            <b className="text-fg">In plain words:</b> {shortThesis(s.thesis)}{' '}
+            {!s.snapshotMismatch && <>Fair value <span className="num font-semibold text-fg">{fmtPrice(s.fairValue, s.market)}</span> (<span className={clsx('num font-semibold', upside >= 0 ? 'text-up' : 'text-down')}>{pct(upside)}</span>).</>}
+          </p>
+        </div>
+        {s.snapshotMismatch && (
+          <div className="mx-4 mt-3 flex gap-2 rounded-lg bg-warn/10 p-3 text-xs leading-relaxed text-warn sm:mx-6">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            The live price differs sharply from our research snapshot ({fmtPrice(base.price, s.market)}): possibly a split, bonus or a major move. Valuation metrics and targets below are from the snapshot and need re-checking.
+          </div>
+        )}
 
-        {/* Fundamentals */}
-        <section>
-          <SectionHeader id="fundamentals" title="Fundamentals & scorecard" subtitle="Key valuation, profitability and growth metrics" />
-          <div className="grid gap-6 lg:grid-cols-5">
-            <div className="card card-pad lg:col-span-3">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
-                {metricRows.map((r) => <Stat key={r.label} label={r.label} value={r.value} />)}
-              </div>
+        {/* Section tabs */}
+        <div className="no-scrollbar mt-4 flex gap-6 overflow-x-auto border-b border-line px-4 sm:px-6" role="tablist">
+          {sections.filter((x) => x.id !== 'peers' || peers.length).map((x, i) => (
+            <button key={x.id} role="tab" aria-selected={i === 0} onClick={() => scrollTo(x.id)} className={clsx('relative h-11 shrink-0 whitespace-nowrap text-sm font-medium', i === 0 ? 'text-fg after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-fg' : 'text-sub hover:text-fg')}>
+              {x.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Chart + ticket */}
+        <div id="overview" className="grid scroll-mt-28 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0 border-line lg:border-r">
+            <div className="px-4 pt-4 sm:px-5">
+              <PriceChart
+                id={stockId(s)}
+                market={s.market}
+                height={320}
+                levels={{ zone: levels.entry, zoneLabel: levels.target < levels.entry[0] ? 'EXIT ZONE' : 'BUY ZONE', target: levels.target, stop: levels.stopLoss, fair: s.fairValue }}
+              />
             </div>
-            <div className="card card-pad lg:col-span-2">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="text-sm font-semibold">5-pillar scorecard</div>
-                <Badge tone={scoreTone(score)}>{score}/100</Badge>
+            <dl className="mt-3 grid grid-cols-3 border-t border-line sm:grid-cols-6">
+              {[
+                ['52W high', fmtPrice(s.high52, s.market)],
+                ['52W low', fmtPrice(s.low52, s.market)],
+                ['P/E', `${m.pe.toFixed(1)}`],
+                ['P/B', `${m.pb.toFixed(1)}`],
+                ['Div. yield', `${m.dividendYield.toFixed(2)}%`],
+                ['Beta', m.beta.toFixed(2)],
+              ].map(([k, v], i) => (
+                <div key={k} className={clsx('px-4 py-3 sm:px-5', i % 3 !== 0 && 'border-l border-line', i >= 3 && 'max-sm:border-t max-sm:border-line', i === 3 && 'sm:border-l sm:border-line')}>
+                  <dt className="label">{k}</dt>
+                  <dd className="num mt-0.5 text-[14.5px] font-medium">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="border-t border-line px-4 py-5 sm:px-5">
+              <h2 className="card-title">How the business makes money</h2>
+              <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-fg2">{s.businessModel}</p>
+              <div className="mt-4 flex h-7 gap-0.5 overflow-hidden rounded-[7px]">
+                {s.revenueMix.map((r, i) => <i key={r.segment} className={mixColors[i % mixColors.length]} style={{ width: `${r.share}%` }} title={`${r.segment} ${r.share}%`} />)}
               </div>
-              <div className="space-y-4">
-                {pillars.map((p) => (
-                  <div key={p.key}>
-                    <div className="mb-1.5 flex items-center justify-between text-sm">
-                      <span className="font-medium">{p.label}</span>
-                      <span className="num font-semibold">{p.score}</span>
-                    </div>
-                    <Bar value={p.score} tone={scoreTone(p.score)} />
-                    <div className="mt-1 text-xs text-sub">{p.note}</div>
+              <div className="mt-3.5 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+                {s.revenueMix.map((r, i) => (
+                  <div key={r.segment} className="text-[13px] text-sub">
+                    <b className="flex items-center gap-1.5 text-[13.5px] font-semibold text-fg"><i className={clsx('h-2 w-2 shrink-0 rounded-sm', mixColors[i % mixColors.length])} /><span className="truncate">{r.segment}</span></b>
+                    <span className="num mt-0.5 block text-lg font-semibold text-fg">{r.share}%</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-        </section>
+          <aside className="border-t border-line p-4 sm:p-5 lg:border-t-0" aria-label="Trade plan">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="card-title">Trade plan</h2>
+              <Segmented size="sm" value={horizon} onChange={setHorizon} options={[{ value: 'short', label: 'Short term' }, { value: 'long', label: 'Long term' }]} />
+            </div>
+            <TradeTicket key={horizon} levels={levels} price={s.price} market={s.market} fairValue={s.fairValue} />
+          </aside>
+        </div>
+      </div>
 
-        {/* Business */}
-        <section>
-          <SectionHeader id="business" title="Business model" />
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="card card-pad space-y-5">
-              <div>
-                <div className="label">About</div>
-                <p className="mt-2 text-sm leading-relaxed">{s.about}</p>
-              </div>
-              <div>
-                <div className="label">How it makes money</div>
-                <p className="mt-2 text-sm leading-relaxed">{s.businessModel}</p>
-              </div>
-            </div>
-            <div className="card card-pad">
-              <div className="label mb-4">Revenue mix</div>
-              <MixDonut data={s.revenueMix} />
-            </div>
-            <div className="card card-pad">
-              <div className="mb-4 text-sm font-semibold">Competitive moats</div>
-              <BulletList items={s.moats} tone="brand" />
-            </div>
-            <div className="card card-pad">
-              <div className="mb-4 text-sm font-semibold">Growth drivers</div>
-              <BulletList items={s.growthDrivers} tone="up" />
-            </div>
-          </div>
-        </section>
-
-        {/* Quarterly */}
-        <section>
-          <SectionHeader id="quarterly" title="Quarterly results" subtitle={`Revenue and net profit, ${unit}`} />
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              { label: `Revenue ${last.period}`, v: fmtFin(last.revenue, s.market), qoq: change(prev.revenue, last.revenue), yoy: change(yoy.revenue, last.revenue) },
-              { label: `Net profit ${last.period}`, v: fmtFin(last.profit, s.market), qoq: change(prev.profit, last.profit), yoy: change(yoy.profit, last.profit) },
-              { label: `Op. margin ${last.period}`, v: `${last.opm}%`, qoq: last.opm - prev.opm, yoy: last.opm - yoy.opm, bps: true },
-            ].map((k) => (
-              <div key={k.label} className="card p-5">
-                <div className="label">{k.label}</div>
-                <div className="num mt-2 text-2xl font-bold">{k.v}{!k.bps && <span className="ml-1 text-sm font-medium text-sub">{unit}</span>}</div>
-                <div className="mt-2 flex gap-4 text-xs">
-                  <span className="text-sub">QoQ <span className={clsx('num font-semibold', k.qoq >= 0 ? 'text-up' : 'text-down')}>{k.bps ? `${k.qoq >= 0 ? '+' : ''}${Math.round(k.qoq * 100)} bps` : pct(k.qoq)}</span></span>
-                  <span className="text-sub">YoY <span className={clsx('num font-semibold', k.yoy >= 0 ? 'text-up' : 'text-down')}>{k.bps ? `${k.yoy >= 0 ? '+' : ''}${Math.round(k.yoy * 100)} bps` : pct(k.yoy)}</span></span>
-                </div>
+      {/* Scorecard + metrics */}
+      <div id="fundamentals" className="mt-4 grid scroll-mt-28 gap-4 lg:grid-cols-12">
+        <div className="card lg:col-span-5">
+          <CardHead title="Research scorecard" right={<span className="num font-semibold">{score}<span className="font-normal text-sub"> / 100</span></span>} />
+          <div className="divide-y divide-line">
+            {pillars.map((p) => (
+              <div key={p.key} className="grid grid-cols-[1fr_auto_34px] items-center gap-3 px-4 py-3 text-sm sm:px-5">
+                <span className="min-w-0">{p.label}<small className="block truncate text-[12.5px] text-sub">{p.note}</small></span>
+                <SegBar score={p.score} />
+                <span className="num text-right font-semibold">{p.score}</span>
               </div>
             ))}
           </div>
-          <div className="mt-4 grid gap-6 lg:grid-cols-5">
-            <div className="card card-pad lg:col-span-3">
-              <div className="mb-2 flex flex-wrap gap-4 text-xs text-sub">
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-brand" />Revenue (left)</span>
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />Net profit (right)</span>
+        </div>
+        <div className="card lg:col-span-7">
+          <CardHead title="Key metrics" sub={`marker = rank among ${universe.length} researched ${marketName} stocks`} />
+          <dl className="grid grid-cols-2 sm:grid-cols-4">
+            {metricCards.map((c, i) => (
+              <div key={c.k} className={clsx('border-line px-4 py-4 sm:px-5', i % 2 === 1 && 'border-l', i >= 2 && 'border-t', 'sm:border-l-0 sm:border-t-0', i % 4 !== 0 && 'sm:border-l', i >= 4 && 'sm:border-t')}>
+                <dt className="label">{c.k}</dt>
+                <dd className="num mt-1 text-[19px] font-semibold tracking-[-0.02em]">{c.v}</dd>
+                {c.r != null && (
+                  <div className="relative mt-2.5 h-1 rounded-full bg-gradient-to-r from-down/25 via-muted to-up/25 ring-1 ring-inset ring-line" title={`Better than ${c.r}% of researched ${marketName} stocks`}>
+                    <i className="absolute -top-[3px] h-2.5 w-2.5 -translate-x-1/2 rounded-full border-2 border-surface bg-fg" style={{ left: `${c.r}%` }} />
+                  </div>
+                )}
+                <p className="mt-1.5 text-[12.5px] leading-snug text-sub">{c.note}</p>
               </div>
-              <QuarterlyChart data={qs} unit={unit} />
-            </div>
-            <div className="card overflow-x-auto lg:col-span-2">
+            ))}
+          </dl>
+        </div>
+      </div>
+
+      {/* Results + news */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-12">
+        <div id="results" className="card scroll-mt-28 lg:col-span-7">
+          <CardHead title="Quarterly results" sub={unit} right={<Segmented size="sm" value={qView} onChange={setQView} options={[{ value: 'table', label: 'Table' }, { value: 'chart', label: 'Chart' }]} />} />
+          {qView === 'table' ? (
+            <div className="overflow-x-auto">
               <table className="table-base">
-                <thead><tr><th>Quarter</th><th className="!text-right">Revenue</th><th className="!text-right">Profit</th><th className="!text-right">OPM</th></tr></thead>
+                <thead><tr><th>Metric</th>{qs.map((r) => <th key={r.period} className="!text-right">{r.period}</th>)}</tr></thead>
                 <tbody>
-                  {[...qs].reverse().map((r) => (
-                    <tr key={r.period}>
-                      <td className="font-medium">{r.period}</td>
-                      <td className="num text-right">{fmtFin(r.revenue, s.market)}</td>
-                      <td className="num text-right">{fmtFin(r.profit, s.market)}</td>
-                      <td className="num text-right text-sub">{r.opm}%</td>
+                  {([
+                    ['Revenue', (r: (typeof qs)[number]) => r.revenue, false],
+                    ['Net profit', (r: (typeof qs)[number]) => r.profit, false],
+                    [s.isFinancial ? 'PPOP margin' : 'Op. margin', (r: (typeof qs)[number]) => r.opm, true],
+                  ] as const).map(([k, get, isPct]) => (
+                    <tr key={k}>
+                      <td className="font-medium">{k}</td>
+                      {qs.map((r, i) => {
+                        const isLast = i === qs.length - 1;
+                        const y = isPct ? get(r) - get(yoy) : change(get(yoy), get(r));
+                        return (
+                          <td key={r.period} className={clsx('num text-right', isLast && 'font-semibold')}>
+                            {isPct ? `${get(r)}%` : fmtFin(get(r), s.market)}
+                            {isLast && qs.length > 1 && <span className={clsx('block text-xs font-medium', y >= 0 ? 'text-up' : 'text-down')}>{isPct ? `${y >= 0 ? '+' : ''}${Math.round(y * 100)} bps` : pct(y)} vs {yoy.period}</span>}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
               </table>
+              <p className="border-t border-line px-4 py-3 text-xs text-sub sm:px-5">Latest quarter vs. previous: revenue <span className={clsx('num font-semibold', change(prev.revenue, last.revenue) >= 0 ? 'text-up' : 'text-down')}>{pct(change(prev.revenue, last.revenue))}</span>, net profit <span className={clsx('num font-semibold', change(prev.profit, last.profit) >= 0 ? 'text-up' : 'text-down')}>{pct(change(prev.profit, last.profit))}</span>.</p>
             </div>
-          </div>
-        </section>
-
-        {/* Forecast */}
-        <section>
-          <SectionHeader id="forecast" title="Growth forecast" subtitle="Annual revenue and EPS — actuals vs. MarketLens estimates (E)" />
-          <div className="grid gap-6 lg:grid-cols-5">
-            <div className="card card-pad lg:col-span-3">
+          ) : (
+            <div className="p-4 sm:p-5">
               <div className="mb-2 flex flex-wrap gap-4 text-xs text-sub">
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-brand" />Revenue actual</span>
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-dashed border-brand bg-brand/30" />Revenue estimate</span>
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" />EPS</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-fg" />Revenue (left)</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-brand" />Net profit (right)</span>
               </div>
-              <AnnualChart data={s.annual} unit={unit} />
+              <QuarterlyChart data={qs} unit={unit} />
             </div>
-            <div className="card card-pad grid grid-cols-2 content-start gap-5 lg:col-span-2">
-              <Stat label="Fwd revenue CAGR" value={pct(fwdRevCagr)} tone={fwdRevCagr >= 0 ? 'up' : 'down'} hint={`${lastA.year} → ${lastE.year}`} />
-              <Stat label="Fwd EPS CAGR" value={pct(fwdEpsCagr)} tone={fwdEpsCagr >= 0 ? 'up' : 'down'} hint={`${lastA.year} → ${lastE.year}`} />
-              <Stat label={`EPS ${lastE.year}`} value={`${s.market === 'IN' ? '₹' : '$'}${lastE.eps}`} />
-              <Stat label={`P/E on ${lastE.year}`} value={`${(s.price / lastE.eps).toFixed(1)}x`} />
-              <p className="col-span-2 text-xs leading-relaxed text-sub">Estimates reflect our base case using management guidance, segment trends and consensus ranges. EPS figures are split/bonus adjusted{s.symbol === 'AVGO' ? ' and non-GAAP' : ''}.</p>
-            </div>
-          </div>
-        </section>
-
-        {/* News */}
-        <section>
-          <SectionHeader id="news" title="Latest news, deals & events" subtitle="Material developments and their likely impact" />
-          <div className="card divide-y divide-line">
-            {[...s.news].sort((a, b) => b.date.localeCompare(a.date)).map((n) => {
-              const Icon = kindIcon[n.kind];
-              return (
-                <div key={n.title} className="flex gap-4 p-4 sm:p-5">
-                  <span className={clsx('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', n.impact === 'positive' ? 'bg-up/10 text-up' : n.impact === 'negative' ? 'bg-down/10 text-down' : 'bg-muted text-sub')}>
-                    <Icon size={17} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-sub">
-                      <span className="num">{fmtDate(n.date)}</span>
-                      <span>·</span>
-                      <span>{n.kind}</span>
-                      <Badge tone={impactTone[n.impact]} className="ml-auto capitalize">{n.impact}</Badge>
-                    </div>
-                    <p className="mt-1 text-sm font-medium leading-relaxed">{n.title}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Risks */}
-        <section>
-          <SectionHeader id="risks" title="Key risks" subtitle="What could break the thesis" />
-          <div className="card card-pad"><BulletList items={s.risks} tone="down" /></div>
-        </section>
-
-        {/* Peers */}
-        {peers.length > 0 && (
-          <section>
-            <SectionHeader id="peers" title="Peer comparison" subtitle={`${s.sector} · ${s.market === 'IN' ? 'India' : 'US'}`} />
-            <div className="card overflow-x-auto">
-              <table className="table-base">
-                <thead><tr><th>Company</th><th className="!text-right">P/E</th><th className="!text-right">Fwd P/E</th><th className="!text-right">ROE</th><th className="!text-right">Net margin</th><th className="!text-right">EPS 3Y</th><th>Rating</th><th className="!text-right">Upside</th></tr></thead>
-                <tbody>
-                  {[s, ...livePeers].map((p) => {
-                    const up = change(p.price, p.fairValue);
-                    return (
-                      <tr key={p.symbol} className={clsx(p.symbol === s.symbol && 'bg-brand/5')}>
-                        <td>
-                          {p.symbol === s.symbol ? <span className="font-semibold">{p.symbol}</span> : <Link to={`/stocks/${p.market}/${encodeURIComponent(p.symbol)}`} className="font-semibold hover:text-brand">{p.symbol}</Link>}
-                          <span className="ml-2 text-xs text-sub">{p.name}</span>
-                        </td>
-                        <td className="num text-right">{p.metrics.pe.toFixed(1)}</td>
-                        <td className="num text-right">{p.metrics.forwardPe.toFixed(1)}</td>
-                        <td className="num text-right">{p.metrics.roe}%</td>
-                        <td className="num text-right">{p.metrics.netMargin}%</td>
-                        <td className="num text-right">{pct(p.metrics.epsGrowth3y, 0)}</td>
-                        <td><Badge tone={ratingTone[p.rating]}>{p.rating}</Badge></td>
-                        <td className={clsx('num text-right font-semibold', up >= 0 ? 'text-up' : 'text-down')}>{pct(up)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
+          )}
+        </div>
+        <div id="news" className="card scroll-mt-28 lg:col-span-5">
+          <CardHead title="News & deals" />
+          <ul className="divide-y divide-line">
+            {[...s.news].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6).map((n) => (
+              <li key={n.title} className="grid grid-cols-[10px_1fr_auto] items-start gap-3 px-4 py-3 text-sm sm:px-5">
+                <span className={clsx('mt-[7px] h-2 w-2 rounded-full', impactDot[n.impact])} />
+                <span>{n.title}<small className="mt-0.5 block text-[12.5px] text-sub">{n.kind} · {fmtDate(n.date)}</small></span>
+                <Badge tone={impactTone[n.impact]} className="capitalize">{n.impact}</Badge>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
+
+      {/* Forecast */}
+      <div id="forecast" className="card mt-4 scroll-mt-28">
+        <CardHead title="Growth forecast" sub="annual revenue and EPS · actuals vs. our estimates (E)" />
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="p-4 sm:p-5">
+            <div className="mb-2 flex flex-wrap gap-4 text-xs text-sub">
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-fg" />Revenue actual</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm border border-dashed border-fg bg-fg/25" />Revenue estimate</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-warn" />EPS</span>
+            </div>
+            <AnnualChart data={s.annual} unit={unit} />
+          </div>
+          <dl className="grid grid-cols-2 content-start border-t border-line lg:border-l lg:border-t-0">
+            {[
+              ['Fwd revenue CAGR', pct(fwdRevCagr), fwdRevCagr >= 0 ? 'text-up' : 'text-down', `${lastA.year} → ${lastE.year}`],
+              ['Fwd EPS CAGR', pct(fwdEpsCagr), fwdEpsCagr >= 0 ? 'text-up' : 'text-down', `${lastA.year} → ${lastE.year}`],
+              [`EPS ${lastE.year}`, `${isIN ? '₹' : '$'}${lastE.eps}`, '', 'Our estimate'],
+              [`P/E on ${lastE.year}`, `${(s.price / lastE.eps).toFixed(1)}×`, '', 'At today’s price'],
+            ].map(([k, v, c, h], i) => (
+              <div key={k} className={clsx('px-4 py-4 sm:px-5', i % 2 === 1 && 'border-l border-line', i >= 2 && 'border-t border-line')}>
+                <dt className="label">{k}</dt>
+                <dd className={clsx('num mt-1 text-lg font-semibold', c)}>{v}</dd>
+                <p className="text-xs text-sub">{h}</p>
+              </div>
+            ))}
+            <p className="col-span-2 border-t border-line px-4 py-3 text-xs leading-relaxed text-sub sm:px-5">Base case built from management guidance, segment trends and consensus ranges. EPS is split/bonus adjusted{s.symbol === 'AVGO' ? ' and non-GAAP' : ''}.</p>
+          </dl>
+        </div>
+      </div>
+
+      {/* Why own / risks */}
+      <div className="card mt-4 grid md:grid-cols-2">
+        <div className="p-4 sm:p-5">
+          <div className="label !text-up">WHY OWN IT</div>
+          <ul className="mt-2.5 grid gap-2.5 text-[13.5px] leading-relaxed text-fg2">
+            {[...s.growthDrivers, ...s.moats].slice(0, 6).map((t) => <li key={t} className="grid grid-cols-[16px_1fr] gap-2"><Check size={16} className="mt-0.5 text-up" />{t}</li>)}
+          </ul>
+        </div>
+        <div className="border-t border-line p-4 sm:p-5 md:border-l md:border-t-0">
+          <div className="label !text-down">WHAT COULD GO WRONG</div>
+          <ul className="mt-2.5 grid gap-2.5 text-[13.5px] leading-relaxed text-fg2">
+            {s.risks.map((t) => <li key={t} className="grid grid-cols-[16px_1fr] gap-2"><X size={16} className="mt-0.5 text-down" />{t}</li>)}
+          </ul>
+        </div>
+        <div className="border-t border-line p-4 text-[13.5px] leading-relaxed text-fg2 sm:p-5 md:col-span-2">
+          <span className="label mr-2">ABOUT</span>{s.about}
+        </div>
+      </div>
+
+      {/* Peers */}
+      {peers.length > 0 && (
+        <div id="peers" className="card mt-4 scroll-mt-28">
+          <CardHead title="Peer comparison" sub={`${s.sector} · ${isIN ? 'India' : 'US'}`} />
+          <div className="overflow-x-auto">
+            <table className="table-base">
+              <thead><tr><th>Company</th><th className="!text-right">P/E</th><th className="!text-right">Fwd P/E</th><th className="!text-right">ROE</th><th className="!text-right">Net margin</th><th className="!text-right">EPS 3Y</th><th className="!text-right">Upside</th><th className="!text-right">Our view</th></tr></thead>
+              <tbody>
+                {[s as LiveStock, ...livePeers].map((p) => {
+                  const up = change(p.price, p.fairValue);
+                  const self = p.symbol === s.symbol;
+                  return (
+                    <tr key={p.symbol} className={clsx(self && 'bg-muted')}>
+                      <td>
+                        {self ? <span className="tk">{p.symbol}</span> : <Link to={`/stocks/${p.market}/${encodeURIComponent(p.symbol)}`} className="tk hover:text-brand">{p.symbol}</Link>}
+                        <span className="ml-2 text-[12.5px] text-sub">{p.name}</span>
+                      </td>
+                      <td className="num text-right">{p.metrics.pe.toFixed(1)}</td>
+                      <td className="num text-right">{p.metrics.forwardPe.toFixed(1)}</td>
+                      <td className="num text-right">{p.metrics.roe}%</td>
+                      <td className="num text-right">{p.metrics.netMargin}%</td>
+                      <td className="num text-right">{pct(p.metrics.epsGrowth3y, 0)}</td>
+                      <td className={clsx('num text-right font-semibold', up >= 0 ? 'text-up' : 'text-down')}>{pct(up)}</td>
+                      <td className="text-right"><Badge tone={ratingTone[p.rating]}>{p.rating}</Badge></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

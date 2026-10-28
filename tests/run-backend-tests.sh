@@ -25,9 +25,16 @@ Q=$(curl -s "http://127.0.0.1:8098/api/quotes.php?ids=IN:RELIANCE,US:AAPL,IN:M%2
 [ "$(echo "$Q" | j '$d["quotes"]["IN:RELIANCE"]["changePct"]>0')" = "true" ] || fail "changePct"
 echo "ok quotes"
 
+IX=$(curl -s "http://127.0.0.1:8098/api/quotes.php?ids=IX:NIFTY,IX:SPX,IX:NOPE")
+[ "$(echo "$IX" | j 'count($d["quotes"])')" = "2" ] || fail "index quotes: $IX"
+[ "$(echo "$IX" | j 'isset($d["quotes"]["IX:NIFTY"]["price"])')" = "true" ] || fail "index quote shape: $IX"
+echo "ok index quotes"
+
 H=$(curl -s "http://127.0.0.1:8098/api/history.php?id=US:AAPL&range=1y")
 [ "$(echo "$H" | j 'count($d["points"])')" = "250" ] || fail "history: $H"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/history.php?id=US:AAPL&range=9y")" = "400" ] || fail "history validation"
+H1=$(curl -s "http://127.0.0.1:8098/api/history.php?id=IX:NIFTY&range=1d")
+[ "$(echo "$H1" | j 'count($d["points"])')" = "75" ] || fail "intraday history: $H1"
 echo "ok history"
 
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/cron/update-ipos.php")" = "403" ] || fail "cron needs token"

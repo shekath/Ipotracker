@@ -4,16 +4,16 @@ import type { ReactNode } from 'react';
 export type Tone = 'up' | 'down' | 'warn' | 'brand' | 'neutral';
 
 const toneCls: Record<Tone, string> = {
-  up: 'bg-up/10 text-up ring-up/20',
-  down: 'bg-down/10 text-down ring-down/20',
-  warn: 'bg-warn/10 text-warn ring-warn/25',
-  brand: 'bg-brand/10 text-brand ring-brand/20',
-  neutral: 'bg-muted text-sub ring-line',
+  up: 'bg-up/10 text-up ring-transparent',
+  down: 'bg-down/10 text-down ring-transparent',
+  warn: 'bg-warn/10 text-warn ring-transparent',
+  brand: 'bg-brand/10 text-brand ring-transparent',
+  neutral: 'bg-muted text-fg2 ring-line',
 };
 
 export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span className={clsx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset whitespace-nowrap', toneCls[tone], className)}>
+    <span className={clsx('inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-semibold ring-1 ring-inset whitespace-nowrap', toneCls[tone], className)}>
       {children}
     </span>
   );
@@ -23,7 +23,7 @@ export function SectionHeader({ title, subtitle, right, id }: { title: string; s
   return (
     <div id={id} className="mb-4 flex flex-wrap items-end justify-between gap-3 scroll-mt-32">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight sm:text-xl">{title}</h2>
+        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
         {subtitle && <p className="mt-0.5 text-sm text-sub">{subtitle}</p>}
       </div>
       {right}
@@ -62,7 +62,7 @@ export function ScoreRing({ score, size = 64, label }: { score: number; size?: n
 export function Bar({ value, tone = 'brand' }: { value: number; tone?: Tone }) {
   const cls = { up: 'bg-up', down: 'bg-down', warn: 'bg-warn', brand: 'bg-brand', neutral: 'bg-sub' }[tone];
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
       <div className={clsx('h-full rounded-full transition-all duration-700', cls)} style={{ width: `${Math.max(2, Math.min(100, value))}%` }} />
     </div>
   );
@@ -72,18 +72,13 @@ export const scoreTone = (s: number): Tone => (s >= 70 ? 'up' : s >= 55 ? 'brand
 
 export function Segmented<T extends string>({ options, value, onChange, size = 'md' }: { options: { value: T; label: ReactNode }[]; value: T; onChange: (v: T) => void; size?: 'sm' | 'md' }) {
   return (
-    <div className="inline-flex rounded-xl border border-line bg-muted/60 p-1" role="tablist">
+    <div className="seg" role="group">
       {options.map((o) => (
         <button
           key={o.value}
-          role="tab"
-          aria-selected={value === o.value}
+          aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
-          className={clsx(
-            'rounded-lg font-medium transition-all whitespace-nowrap',
-            size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-sm',
-            value === o.value ? 'bg-surface text-fg shadow-sm ring-1 ring-line' : 'text-sub hover:text-fg',
-          )}
+          className={clsx('seg-btn', size === 'sm' ? '!h-6 !px-2 !text-xs' : '', value === o.value && 'seg-on')}
         >
           {o.label}
         </button>
@@ -112,6 +107,36 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
       <div className="text-base font-semibold">{title}</div>
       <p className="mt-1 max-w-sm text-sm text-sub">{body}</p>
       {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+/** 10-step score bar (0–100), D-style. */
+export function SegBar({ score }: { score: number }) {
+  const on = Math.round(score / 10);
+  const color = score >= 65 ? 'bg-up' : score >= 45 ? 'bg-warn' : 'bg-down';
+  return (
+    <span className="grid w-28 shrink-0 grid-cols-10 gap-0.5" role="img" aria-label={`${score} out of 100`}>
+      {Array.from({ length: 10 }, (_, i) => <i key={i} className={clsx('h-2 rounded-[1.5px]', i < on ? color : 'bg-line')} />)}
+    </span>
+  );
+}
+
+/** Conviction as a 3-step meter. */
+export function ConvictionMeter({ level }: { level: 'High' | 'Medium' | 'Low' }) {
+  const n = level === 'High' ? 3 : level === 'Medium' ? 2 : 1;
+  return (
+    <span className="flex gap-[3px]" role="img" aria-label={`${level} conviction`}>
+      {[0, 1, 2].map((i) => <i key={i} className={clsx('h-1.5 w-4 rounded-sm', i < n ? 'bg-up' : 'bg-line2')} />)}
+    </span>
+  );
+}
+
+export function CardHead({ title, sub, right }: { title: ReactNode; sub?: ReactNode; right?: ReactNode }) {
+  return (
+    <div className="card-head">
+      <h2 className="card-title">{title}{sub && <span className="ml-2 text-[13px] font-normal text-sub">{sub}</span>}</h2>
+      {right}
     </div>
   );
 }

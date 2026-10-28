@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Builds the site and publishes it to the `hostinger-deploy` branch, which
-# Hostinger's Git deploy pulls into public_html/stocks (stocks.shekathali.com).
+# Builds the site and publishes it to a deploy branch that Hostinger's Git
+# deploy pulls: `hostinger-deploy` -> public_html/stocks (stocks.shekathali.com),
+# `hostinger-markets` -> public_html/markets (shekathali.com/markets).
 #
 # Each build is committed on top of the current hostinger-deploy tip and pushed
 # without force, so the server's `git pull` is always a fast-forward.
@@ -8,12 +9,13 @@
 #
 # Usage: npm run deploy:branch            build and push
 #        npm run deploy:branch -- --dry-run   build and commit locally, don't push
+#        DEPLOY_BRANCH=hostinger-markets npm run deploy:branch   publish to another branch
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 DRY_RUN=0
 [ "${1:-}" = "--dry-run" ] && DRY_RUN=1
-BRANCH=hostinger-deploy
+BRANCH=${DEPLOY_BRANCH:-hostinger-deploy}
 
 git fetch -q origin main
 if git fetch -q origin "$BRANCH" 2>/dev/null; then

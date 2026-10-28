@@ -14,9 +14,11 @@ if (preg_match('#^/v8/finance/chart/(.+)$#', $path, $m)) {
     $base = 100 + (crc32($sym) % 900);
     $now = time();
     $range = $q['range'] ?? '1d';
-    $n = ['1d' => 1, '1mo' => 22, '6mo' => 126, '1y' => 250, '5y' => 260][$range] ?? 1;
+    $intraday = ($q['interval'] ?? '') === '5m';
+    $n = $intraday ? 75 : (['1d' => 1, '1mo' => 22, '6mo' => 126, '1y' => 250, '5y' => 260][$range] ?? 1);
+    $step = $intraday ? 300 : 86400;
     $ts = []; $close = [];
-    for ($i = $n; $i > 0; $i--) { $ts[] = $now - $i * 86400; $close[] = round($base * (1 + sin($i / 9) * 0.08), 2); }
+    for ($i = $n; $i > 0; $i--) { $ts[] = $now - $i * $step; $close[] = round($base * (1 + sin($i / 9) * 0.08), 2); }
     echo json_encode(['chart' => ['result' => [[
         'meta' => [
             'currency' => str_ends_with($sym, '.NS') ? 'INR' : 'USD', 'symbol' => $sym,

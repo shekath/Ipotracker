@@ -133,7 +133,7 @@ export function useLiveStocks(list: Stock[]) {
 
 // ---------------- Price history ----------------
 
-export type Range = '1mo' | '6mo' | '1y' | '5y';
+export type Range = '1d' | '1mo' | '6mo' | '1y' | '5y';
 const historyCache = new Map<string, [number, number][]>();
 
 export function useHistory(id: string, range: Range) {
