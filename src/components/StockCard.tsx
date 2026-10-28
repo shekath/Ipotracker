@@ -63,8 +63,14 @@ export default function StockCard({ s, status = 'offline' }: { s: LiveStock; sta
       <div className="mt-5 flex items-center justify-between gap-2 border-t border-line pt-4">
         <Badge tone={ratingTone[s.rating]}>{s.rating}</Badge>
         <div className="text-right text-xs text-sub">
-          Fair value <span className="num font-semibold text-fg">{fmtPrice(s.fairValue, s.market)}</span>{' '}
-          <span className={clsx('num font-semibold', upside >= 0 ? 'text-up' : 'text-down')}>{pct(upside)}</span>
+          {s.snapshotMismatch ? (
+            <span className="text-warn" title="Live price differs sharply from the research snapshot (possible split or bonus); fair value under review">Fair value under review</span>
+          ) : (
+            <>
+              Fair value <span className="num font-semibold text-fg">{fmtPrice(s.fairValue, s.market)}</span>{' '}
+              <span className={clsx('num font-semibold', upside >= 0 ? 'text-up' : 'text-down')}>{pct(upside)}</span>
+            </>
+          )}
         </div>
       </div>
     </Link>

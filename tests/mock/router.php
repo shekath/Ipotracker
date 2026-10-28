@@ -32,6 +32,37 @@ if (preg_match('#^/v8/finance/chart/(.+)$#', $path, $m)) {
     exit;
 }
 
+// Yahoo v7: cookie from fc.yahoo.com, then a crumb, then batch quotes.
+if ($path === '/fc/') { setcookie('A3', 'yahoo', 0, '/'); http_response_code(404); echo 'fc'; exit; }
+if ($path === '/v1/test/getcrumb') {
+    header('Content-Type: text/plain');
+    if (empty($_COOKIE['A3'])) { http_response_code(401); echo 'no cookie'; exit; }
+    echo 'mockcrumb'; exit;
+}
+if ($path === '/v7/finance/quote') {
+    if (($q['crumb'] ?? '') !== 'mockcrumb' || empty($_COOKIE['A3'])) { http_response_code(401); echo '{"finance":{"error":"Invalid Crumb"}}'; exit; }
+    $res = [];
+    foreach (explode(',', $q['symbols']) as $sym) {
+        if ($sym === 'NOV7.NS') continue; // simulate a symbol v7 misses -> chart fallback
+        $base = 100 + (crc32($sym) % 900);
+        $res[] = ['symbol' => $sym, 'regularMarketPrice' => $base * 1.01, 'regularMarketChangePercent' => (crc32($sym) % 7) - 3.0,
+            'marketCap' => $base * 1e10, 'trailingPE' => 10 + crc32($sym) % 40, 'forwardPE' => 9 + crc32($sym) % 30, 'priceToBook' => 1 + (crc32($sym) % 90) / 10,
+            'trailingAnnualDividendYield' => 0.012, 'fiftyTwoWeekHigh' => $base * 1.3, 'fiftyTwoWeekLow' => $base * 0.7, 'regularMarketVolume' => 1000, 'marketState' => 'REGULAR'];
+    }
+    echo json_encode(['quoteResponse' => ['result' => $res, 'error' => null]]); exit;
+}
+
+// niftyindices.com constituent CSVs
+if (preg_match('#^/IndexConstituent/(.+)\.csv$#', $path, $m)) {
+    header('Content-Type: text/csv');
+    if ($m[1] !== 'ind_nifty50list') { http_response_code(403); echo 'blocked'; exit; }
+    echo "\xEF\xBB\xBFCompany Name,Industry,Symbol,Series,ISIN Code\r\n";
+    foreach ([['Reliance Industries Ltd.', 'Oil Gas & Consumable Fuels', 'RELIANCE'], ['Mahindra & Mahindra Ltd.', 'Automobile and Auto Components', 'M&M'], ['Bajaj Auto Ltd.', 'Automobile and Auto Components', 'BAJAJ-AUTO'], ['HDFC Bank Ltd.', 'Financial Services', 'HDFCBANK'], ['Infosys Ltd.', 'Information Technology', 'INFY'], ['No V7 Ltd.', 'Services', 'NOV7']] as $r) {
+        echo "\"{$r[0]}\",{$r[1]},{$r[2]},EQ,INE000000000\r\n";
+    }
+    exit;
+}
+
 // NSE: home sets the session cookie; APIs refuse requests without it.
 if ($path === '/') { setcookie('nsit', 'abc', 0, '/'); header('Content-Type: text/html'); echo '<html>NSE</html>'; exit; }
 if (str_starts_with($path, '/api/') && empty($_COOKIE['nsit'])) { http_response_code(401); echo '{}'; exit; }

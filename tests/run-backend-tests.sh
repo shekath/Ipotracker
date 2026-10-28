@@ -7,7 +7,7 @@ cat > "$TMP/config.local.php" <<PHP
 <?php return [
   'data_dir' => '$TMP/data',
   'cron_token' => 'secret',
-  'upstream' => ['yahoo' => ['http://127.0.0.1:8099'], 'nse' => 'http://127.0.0.1:8099', 'twelvedata' => 'http://127.0.0.1:8099'],
+  'upstream' => ['yahoo' => ['http://127.0.0.1:8099'], 'yahoo_cookie' => 'http://127.0.0.1:8099/fc', 'niftyindices' => 'http://127.0.0.1:8099', 'nse' => 'http://127.0.0.1:8099', 'twelvedata' => 'http://127.0.0.1:8099'],
   'gmp_sources' => [['name' => 'Mock GMP', 'url' => 'http://127.0.0.1:8099/gmp.html']],
 ];
 PHP
@@ -49,6 +49,21 @@ BLS=$(echo "$I" | j 'array_values(array_filter($d["ipos"], fn($i)=>$i["symbol"]=
 echo "$I" | j 'in_array("Tiny Widgets Limited", array_column($d["ipos"],"name")) && array_values(array_filter($d["ipos"], fn($i)=>$i["name"]==="Tiny Widgets Limited"))[0]["type"]==="SME"' | grep -q true || fail "SME detection"
 echo "$I" | j 'in_array("Old Listed Co", array_column($d["ipos"],"name"))' | grep -q false || fail "old GMP rows must be ignored"
 echo "ok ipos"
+
+S=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=nifty50")
+[ "$(echo "$S" | j '$d["constituentsSource"]')" = '"NSE Indices (official)"' ] || fail "constituents source: $S"
+[ "$(echo "$S" | j 'count($d["rows"])')" = "6" ] || fail "csv rows"
+[ "$(echo "$S" | j 'array_column($d["rows"],"symbol")')" = '["RELIANCE","M&M","BAJAJ-AUTO","HDFCBANK","INFY","NOV7"]' ] || fail "symbols"
+[ "$(echo "$S" | j '$d["rows"][1]["pe"]!==null && $d["rows"][1]["mcap"]>0')" = "true" ] || fail "v7 fundamentals for M&M"
+[ "$(echo "$S" | j '$d["rows"][5]["price"]>0 && $d["rows"][5]["pe"]===null')" = "true" ] || fail "chart fallback for v7 miss"
+[ "$(echo "$S" | j '$d["rows"][0]["divYield"]')" = "1.2" ] || fail "div yield %"
+S2=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=banknifty")
+[ "$(echo "$S2" | j '$d["constituentsSource"]')" = '"Bundled fallback list"' ] || fail "fallback when CSV blocked: $S2"
+[ "$(echo "$S2" | j 'count(array_filter($d["rows"], fn($r)=>$r["price"]>0))')" = "14" ] || fail "fallback quotes"
+S3=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=dow30")
+[ "$(echo "$S3" | j 'count($d["rows"])')" = "30" ] || fail "dow30"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/screener.php?index=nope")" = "404" ] || fail "unknown index"
+echo "ok screener"
 
 curl -s "http://127.0.0.1:8098/api/health.php" | j '$d["dataDirWritable"]' | grep -q true || fail "health"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/lib/http.php")" != "500" ] || true
