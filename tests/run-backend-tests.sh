@@ -69,6 +69,13 @@ S2=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=banknifty")
 S3=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=dow30")
 [ "$(echo "$S3" | j 'count($d["rows"])')" = "30" ] || fail "dow30"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/screener.php?index=nope")" = "404" ] || fail "unknown index"
+A1=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=allin")
+[ "$(echo "$A1" | j '$d["constituentsSource"]')" = '"NSE Indices (official)"' ] || fail "All (India) uses the broad Nifty 500 list: $(echo "$A1" | head -c 200)"
+[ "$(echo "$A1" | j 'count($d["rows"])')" = "60" ] || fail "All (India) rows"
+[ "$(echo "$A1" | j 'count(array_filter($d["rows"], fn($r)=>$r["price"]>0))')" = "60" ] || fail "All (India) quotes"
+A2=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=allus")
+[ "$(echo "$A2" | j 'count($d["rows"])')" = "37" ] || fail "All (US) = Dow 30 + mega caps, deduplicated"
+[ "$(echo "$A2" | j 'count(array_unique(array_column($d["rows"],"symbol")))')" = "37" ] || fail "no duplicates"
 echo "ok screener"
 
 curl -s "http://127.0.0.1:8098/api/health.php" | j '$d["dataDirWritable"]' | grep -q true || fail "health"
