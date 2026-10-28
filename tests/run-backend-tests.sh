@@ -88,7 +88,11 @@ SPLIT=$(ML_CONFIG_LOCAL="$TMP/config.local.php" php -r 'require "public/api/lib/
   $mon19 = strtotime("2026-10-19 09:15"); $mon26 = strtotime("2026-10-26 09:15");
   $bars = [["t"=>$mon19,"high"=>2,"low"=>1,"close"=>1.5,"open"=>1], ["t"=>$mon26,"high"=>3,"low"=>2,"close"=>2.5,"open"=>2]];
   [$p1, $c1] = weekly_split($bars, strtotime("2026-10-28 12:00")); [$p2, $c2] = weekly_split($bars, strtotime("2026-10-31 12:00"));
-  $daily = ["bars"=>[["t"=>strtotime("2026-10-27 09:15"),"close"=>10.0], ["t"=>strtotime("2026-10-28 09:15"),"close"=>11.0]], "sessionEnd"=>strtotime("2026-10-28 15:30")];
+  // Yahoo appends a live-session candle next to the current week candle: last week must still be 19-23 Oct.
+  $yb = [["t"=>strtotime("2026-10-19 00:00"),"open"=>23150.85,"high"=>23175.25,"low"=>22372,"close"=>22600], ["t"=>strtotime("2026-10-26 00:00"),"open"=>22524.4,"high"=>22829.75,"low"=>22387.35,"close"=>22749.75], ["t"=>strtotime("2026-10-28 15:31"),"open"=>22678,"high"=>22778.05,"low"=>22497.7,"close"=>22698.85]];
+  [$yp, $yc] = weekly_split($yb, strtotime("2026-10-28 21:00"));
+  if ([$yp["high"], $yp["low"], $yp["close"], $yc["high"], $yc["low"], $yc["close"]] !== [23175.25, 22372, 22600, 22829.75, 22387.35, 22698.85]) { echo "yahoo-shape ", json_encode([$yp, $yc]); exit; }
+  $daily = ["bars"=>[["t"=>strtotime("2026-10-27 09:15"),"open"=>9.0,"high"=>10.5,"low"=>9.0,"close"=>10.0], ["t"=>strtotime("2026-10-28 09:15"),"open"=>10.0,"high"=>11.5,"low"=>9.5,"close"=>11.0], ["t"=>strtotime("2026-10-28 15:31"),"open"=>11.0,"high"=>11.2,"low"=>10.8,"close"=>11.1]], "sessionEnd"=>strtotime("2026-10-28 15:30")];
   echo json_encode([$p1["t"]===$mon19 && $c1["t"]===$mon26, $p2["t"]===$mon26 && $c2===null, weekly_label($mon19),
     weekly_prev_day($daily, strtotime("2026-10-28 12:00"))["date"], weekly_prev_day($daily, strtotime("2026-10-28 16:00"))["date"]]);')
 [ "$SPLIT" = '[true,true,"19 Oct \u2013 23 Oct 2026","2026-10-27","2026-10-28"]' ] || fail "weekly split: $SPLIT"
