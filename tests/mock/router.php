@@ -55,6 +55,11 @@ if ($path === '/v7/finance/quote') {
 // niftyindices.com constituent CSVs
 if (preg_match('#^/IndexConstituent/(.+)\.csv$#', $path, $m)) {
     header('Content-Type: text/csv');
+    if ($m[1] === 'ind_nifty500list') {
+        echo "Company Name,Industry,Symbol,Series,ISIN Code\r\n";
+        for ($i = 1; $i <= 60; $i++) echo "Broad Co $i Ltd.,Services,BROAD$i,EQ,INE000000000\r\n";
+        exit;
+    }
     if ($m[1] !== 'ind_nifty50list') { http_response_code(403); echo 'blocked'; exit; }
     echo "\xEF\xBB\xBFCompany Name,Industry,Symbol,Series,ISIN Code\r\n";
     foreach ([['Reliance Industries Ltd.', 'Oil Gas & Consumable Fuels', 'RELIANCE'], ['Mahindra & Mahindra Ltd.', 'Automobile and Auto Components', 'M&M'], ['Bajaj Auto Ltd.', 'Automobile and Auto Components', 'BAJAJ-AUTO'], ['HDFC Bank Ltd.', 'Financial Services', 'HDFCBANK'], ['Infosys Ltd.', 'Information Technology', 'INFY'], ['No V7 Ltd.', 'Services', 'NOV7']] as $r) {

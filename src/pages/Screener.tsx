@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowDown, ArrowUp, ExternalLink, Info, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink, Info, Search } from 'lucide-react';
 import clsx from 'clsx';
 import { stocks } from '../data';
 import { Badge, EmptyState, Segmented } from '../components/ui';
@@ -37,6 +37,61 @@ const fmtP = (v: number | null | undefined, m: Market) =>
   v == null ? '—' : `${m === 'IN' ? '₹' : '$'}${v.toLocaleString(m === 'IN' ? 'en-IN' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fx = (v: number | null | undefined, d = 1) => (v == null || !isFinite(v) ? '—' : v.toFixed(d));
 
+const PAGE_SIZES = [10, 25, 50, 100];
+const PAGE_SIZE_KEY = 'ml-page-size';
+function readPageSize() {
+  try {
+    const n = Number(localStorage.getItem(PAGE_SIZE_KEY));
+    return PAGE_SIZES.includes(n) ? n : 25;
+  } catch {
+    return 25;
+  }
+}
+
+/** Page numbers to show: first, last, current ±1, with gaps marked as null. */
+function pageList(page: number, count: number): (number | null)[] {
+  const set = new Set([1, count, page - 1, page, page + 1].filter((n) => n >= 1 && n <= count));
+  const sorted = [...set].sort((a, b) => a - b);
+  const out: (number | null)[] = [];
+  sorted.forEach((n, i) => {
+    if (i > 0 && n - sorted[i - 1] > 1) out.push(null);
+    out.push(n);
+  });
+  return out;
+}
+
+function Pagination({ page, pageCount, pageSize, total, offset, shown, onPage, onPageSize }: { page: number; pageCount: number; pageSize: number; total: number; offset: number; shown: number; onPage: (n: number) => void; onPageSize: (n: number) => void }) {
+  const btn = 'inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-40';
+  return (
+    <div className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3 text-sm text-sub">
+        <label className="flex items-center gap-2">
+          Rows
+          <select className="rounded-lg border border-line bg-surface px-2 py-1 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-brand/40" value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))} aria-label="Rows per page">
+            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <span className="num">{total ? `${offset + 1}–${offset + shown}` : 0} of {total}</span>
+      </div>
+      {pageCount > 1 && (
+        <nav className="flex items-center gap-1" aria-label="Pagination">
+          <button className={clsx(btn, 'text-sub hover:bg-muted hover:text-fg')} onClick={() => onPage(1)} disabled={page === 1} aria-label="First page"><ChevronsLeft size={16} /></button>
+          <button className={clsx(btn, 'text-sub hover:bg-muted hover:text-fg')} onClick={() => onPage(page - 1)} disabled={page === 1} aria-label="Previous page"><ChevronLeft size={16} /></button>
+          {pageList(page, pageCount).map((n, i) =>
+            n == null ? (
+              <span key={`gap-${i}`} className="px-1 text-sub">…</span>
+            ) : (
+              <button key={n} className={clsx(btn, 'num', n === page ? 'bg-fg text-bg' : 'text-sub hover:bg-muted hover:text-fg')} onClick={() => onPage(n)} aria-current={n === page ? 'page' : undefined}>{n}</button>
+            ),
+          )}
+          <button className={clsx(btn, 'text-sub hover:bg-muted hover:text-fg')} onClick={() => onPage(page + 1)} disabled={page === pageCount} aria-label="Next page"><ChevronRight size={16} /></button>
+          <button className={clsx(btn, 'text-sub hover:bg-muted hover:text-fg')} onClick={() => onPage(pageCount)} disabled={page === pageCount} aria-label="Last page"><ChevronsRight size={16} /></button>
+        </nav>
+      )}
+    </div>
+  );
+}
+
 export default function Screener() {
   const [market, setMarket] = useMarketPref();
   const [params, setParams] = useSearchParams();
@@ -49,6 +104,17 @@ export default function Screener() {
   const [industry, setIndustry] = useState('All');
   const [preset, setPreset] = useState<Preset>('all');
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'mcap', dir: -1 });
+  const [pageSize, setPageSizeState] = useState<number>(readPageSize);
+  const [page, setPage] = useState(1);
+  const setPageSize = (n: number) => {
+    setPageSizeState(n);
+    setPage(1);
+    try {
+      localStorage.setItem(PAGE_SIZE_KEY, String(n));
+    } catch {
+      /* storage unavailable */
+    }
+  };
 
   const pick = (id: string) => {
     setParams({ index: id }, { replace: true });
@@ -97,6 +163,15 @@ export default function Screener() {
       return (av - bv) * key.dir;
     });
   }, [enriched, industry, preset, q, sort]);
+
+  // Back to page 1 whenever the list itself changes.
+  useEffect(() => {
+    setPage(1);
+  }, [def?.id, q, industry, preset, sort]);
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const current = Math.min(page, pageCount);
+  const offset = (current - 1) * pageSize;
+  const pageRows = rows.slice(offset, offset + pageSize);
 
   const priced = enriched.filter((r) => r.changePct != null);
   const adv = priced.filter((r) => (r.changePct ?? 0) > 0).length;
@@ -219,12 +294,13 @@ export default function Screener() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {pageRows.map((r, i) => {
                 const pos = r.price != null && r.high52 && r.low52 && r.high52 > r.low52 ? ((r.price - r.low52) / (r.high52 - r.low52)) * 100 : undefined;
                 return (
                   <tr key={r.symbol} className="group transition-colors hover:bg-muted/50">
                     <td className="sticky left-0 z-10 bg-surface group-hover:bg-muted">
-                      <div className="flex max-w-[13rem] items-center gap-2 sm:max-w-[18rem]">
+                      <div className="flex max-w-[15rem] items-center gap-2 sm:max-w-[20rem]">
+                        <span className="num w-7 shrink-0 text-right text-xs text-sub">{offset + i + 1}</span>
                         <div className="min-w-0">
                           {r.research ? (
                             <Link to={`/stocks/${market}/${encodeURIComponent(r.symbol)}`} className="block font-semibold hover:text-brand">{r.symbol}</Link>
@@ -260,6 +336,7 @@ export default function Screener() {
               })}
             </tbody>
           </table>
+          <Pagination page={current} pageCount={pageCount} pageSize={pageSize} total={rows.length} offset={offset} shown={pageRows.length} onPage={(n) => { setPage(n); window.scrollTo({ top: 0, behavior: 'smooth' }); }} onPageSize={setPageSize} />
         </div>
       )}
       <p className="mt-4 text-xs text-sub">Stocks with a <Badge tone="brand" className="!px-2 !text-[10px]">Research</Badge> badge have a full MarketLens analysis with targets. Others link to the exchange quote page. Valuation data from Yahoo Finance; P/E shown only when earnings are positive.</p>
