@@ -43,7 +43,7 @@ export function overallScore(s: Stock): number {
 export const ratingTone: Record<Rating, 'up' | 'brand' | 'warn' | 'down'> = {
   'Strong Buy': 'up',
   Buy: 'up',
-  Accumulate: 'brand',
+  Accumulate: 'up',
   Hold: 'warn',
   Reduce: 'down',
   Sell: 'down',
@@ -52,7 +52,7 @@ export const ratingTone: Record<Rating, 'up' | 'brand' | 'warn' | 'down'> = {
 export const verdictTone: Record<IpoVerdict, 'up' | 'brand' | 'warn' | 'down' | 'neutral'> = {
   Apply: 'up',
   'Apply · Long Term': 'up',
-  'Apply · Listing Gains': 'brand',
+  'Apply · Listing Gains': 'up',
   Neutral: 'warn',
   Avoid: 'down',
   Watch: 'neutral',

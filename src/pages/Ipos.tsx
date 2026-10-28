@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Info, Radio } from 'lucide-react';
 import clsx from 'clsx';
 import { pipeline } from '../data';
-import IpoCard from '../components/IpoCard';
-import { EmptyState, SectionHeader, Segmented } from '../components/ui';
+import IpoTable from '../components/IpoTable';
+import { CardHead, EmptyState, Segmented } from '../components/ui';
 import { timeAgo } from '../components/live';
 import { ipoStatus, type IpoStatus } from '../lib/scoring';
 import { useIpoViews } from '../lib/useIpoViews';
@@ -31,39 +31,33 @@ export default function Ipos() {
   ];
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-4">
       <div>
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">IPO desk · India</h1>
-            <p className="mt-1 max-w-2xl text-sm text-sub">New issues are picked up automatically from NSE as soon as they are announced, with day-wise subscription by investor category and grey-market premium. Researched issues carry a full fundamental verdict; others get a market-signal view.</p>
+            <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em]">IPO desk</h1>
+            <p className="mt-1 max-w-2xl text-sm text-sub">Every Indian IPO, picked up from NSE as soon as it's announced, with live subscription by investor category, grey market premium and our apply / avoid call.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Segmented value={type} onChange={setType} options={[{ value: 'Mainboard', label: 'Mainboard' }, { value: 'SME', label: 'SME' }, { value: 'All', label: 'All' }]} />
             <Segmented value={filter} onChange={setFilter} options={opts} />
           </div>
         </div>
-        <div className={clsx('mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border px-4 py-2.5 text-xs', status === 'live' ? 'border-up/30 bg-up/5' : 'border-line bg-muted/40')}>
+        <div className="card overflow-hidden">
+        <div className={clsx('flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-2.5 text-xs sm:px-5', status === 'live' ? 'bg-up/5' : 'bg-muted')}>
           <span className="flex items-center gap-1.5 font-semibold"><Radio size={13} className={status === 'live' ? 'text-up' : 'text-sub'} /> {status === 'live' ? 'Auto-tracking on' : status === 'loading' ? 'Connecting to live feed…' : 'Live feed offline — showing researched issues only'}</span>
           {feed?.lastRun ? <span className="text-sub">Last update {timeAgo(feed.lastRun)}</span> : null}
           {feed && Object.entries(feed.sources).map(([k, v]) => (
             <span key={k} className="flex items-center gap-1 text-sub" title={v.msg}><span className={clsx('h-1.5 w-1.5 rounded-full', v.ok ? 'bg-up' : 'bg-down')} />{k}</span>
           ))}
         </div>
-        <div className="mt-6">
-          {rows.length ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {rows.map((i) => <IpoCard key={i.id} ipo={i} />)}
-            </div>
-          ) : (
-            <EmptyState title="Nothing here" body="No IPOs match this status." />
-          )}
+        {rows.length ? <IpoTable rows={rows} /> : <div className="p-4"><EmptyState title="Nothing here" body="No IPOs match this status." /></div>}
         </div>
       </div>
 
-      <section>
-        <SectionHeader title="Big-ticket pipeline" subtitle="Large issues to watch — no recommendation until the RHP and price band are out" />
-        <div className="card overflow-x-auto">
+      <section className="card">
+        <CardHead title="Big-ticket pipeline" sub="no call until the RHP and price band are out" />
+        <div className="overflow-x-auto">
           <table className="table-base">
             <thead><tr><th>Company</th><th>Sector</th><th>Expected size</th><th>Status</th><th>What to watch</th></tr></thead>
             <tbody>
@@ -81,7 +75,7 @@ export default function Ipos() {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-2">
         <div className="card card-pad">
           <div className="mb-4 text-sm font-semibold">How we read an IPO</div>
           <ul className="space-y-3 text-sm leading-relaxed">
@@ -101,7 +95,7 @@ export default function Ipos() {
           <ul className="space-y-3 text-sm leading-relaxed">
             <li><span className="font-semibold text-up">Apply</span> — <span className="text-sub">good for listing and long-term holding.</span></li>
             <li><span className="font-semibold text-up">Apply · Long Term</span> — <span className="text-sub">fundamentals strong; listing pop uncertain.</span></li>
-            <li><span className="font-semibold text-brand">Apply · Listing Gains</span> — <span className="text-sub">demand likely strong; valuation full for long-term.</span></li>
+            <li><span className="font-semibold text-up">Apply · Listing Gains</span> — <span className="text-sub">demand likely strong; valuation full for long-term.</span></li>
             <li><span className="font-semibold text-warn">Neutral</span> — <span className="text-sub">fairly priced; watch post-listing.</span></li>
             <li><span className="font-semibold text-down">Avoid</span> — <span className="text-sub">risks outweigh rewards at the offer price.</span></li>
           </ul>

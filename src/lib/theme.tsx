@@ -60,6 +60,6 @@ export function useTheme() {
 export function useChartColors() {
   const { isDark } = useTheme();
   return isDark
-    ? { brand: '#34d399', brandSoft: '#34d39955', alt: '#818cf8', altSoft: '#818cf855', up: '#34d399', down: '#f87171', warn: '#fbbf24', grid: '#262b36', sub: '#919bac', fg: '#eceff4', surface: '#11141b', series: ['#34d399', '#818cf8', '#fbbf24', '#f472b6', '#38bdf8'] }
-    : { brand: '#10b981', brandSoft: '#10b98155', alt: '#6366f1', altSoft: '#6366f155', up: '#059669', down: '#dc2626', warn: '#d97706', grid: '#e4e7ec', sub: '#647083', fg: '#0f172a', surface: '#ffffff', series: ['#10b981', '#6366f1', '#f59e0b', '#ec4899', '#0ea5e9'] };
+    ? { brand: '#f3f5f8', brandSoft: '#f3f5f855', alt: '#7d90ff', altSoft: '#7d90ff55', up: '#3fd18a', down: '#ff6b7d', warn: '#f5b84a', grid: '#222935', sub: '#8d97a7', fg: '#f3f5f8', surface: '#10141b', series: ['#f3f5f8', '#7d90ff', '#3fd18a', '#f5b84a', '#8d97a7'] }
+    : { brand: '#0a0f1a', brandSoft: '#0a0f1a40', alt: '#2f4bff', altSoft: '#2f4bff55', up: '#047a48', down: '#c4122f', warn: '#a15c00', grid: '#e1e5eb', sub: '#5f6b7c', fg: '#0a0f1a', surface: '#ffffff', series: ['#0a0f1a', '#2f4bff', '#9aa8ff', '#047a48', '#a15c00'] };
 }

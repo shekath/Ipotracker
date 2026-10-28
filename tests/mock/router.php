@@ -14,8 +14,9 @@ if (preg_match('#^/v8/finance/chart/(.+)$#', $path, $m)) {
     $base = 100 + (crc32($sym) % 900);
     $now = time();
     $range = $q['range'] ?? '1d';
-    $n = ['1d' => 1, '1mo' => 22, '3mo' => 63, '6mo' => 126, '1y' => 250, '5y' => 260][$range] ?? 1;
-    $daySec = 86400;
+    $intraday = ($q['interval'] ?? '') === '5m';
+    $n = $intraday ? 75 : (['1d' => 1, '1mo' => 22, '3mo' => 63, '6mo' => 126, '1y' => 250, '5y' => 260][$range] ?? 1);
+    $daySec = $intraday ? 300 : 86400;
     if (($q['interval'] ?? '') === '1wk') { $n = (int) ceil($n / 5); $daySec = 7 * 86400; } // weekly candles, last one = this week
     $ts = []; $close = []; $open = []; $high = []; $low = [];
     for ($i = $n; $i > 0; $i--) {

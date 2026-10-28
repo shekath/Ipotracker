@@ -11,7 +11,6 @@ import { useWatchlist } from '../lib/watchlist';
 import { useLiveStocks } from '../lib/live';
 import { ChangeTag, LiveDot } from '../components/live';
 import { useMarketPref } from '../lib/marketPref';
-import { marketTabs } from '../components/Flag';
 import type { Market, Rating } from '../types';
 
 type SortKey = 'upside' | 'score' | 'mcap' | 'pe' | 'growth' | 'roe';
@@ -29,15 +28,20 @@ export default function Stocks() {
   const [params, setParams] = useSearchParams();
   const [pref, setPref] = useMarketPref();
   const urlMarket = params.get('market');
-  const market: Market = urlMarket === 'IN' || urlMarket === 'US' ? urlMarket : pref;
+  // A ?market= link selects that market once; after that the header switch is in charge.
   useEffect(() => {
-    if (market !== pref) setPref(market);
-  }, [market, pref, setPref]);
+    if (urlMarket !== 'IN' && urlMarket !== 'US') return;
+    if (urlMarket !== pref) setPref(urlMarket);
+    const next = new URLSearchParams(params);
+    next.delete('market');
+    setParams(next, { replace: true });
+  }, [urlMarket]); // eslint-disable-line react-hooks/exhaustive-deps
+  const market: Market = urlMarket === 'IN' || urlMarket === 'US' ? urlMarket : pref;
   const sector = params.get('sector') ?? 'All';
   const q = params.get('q') ?? '';
   const sort = (params.get('sort') as SortKey | null) ?? 'upside';
   const rating = (params.get('rating') as Rating | null) ?? 'All';
-  const view = params.get('view') === 'table' ? 'table' : 'grid';
+  const view = params.get('view') === 'grid' ? 'grid' : 'table';
   const onlyWatch = params.get('watch') === '1';
   const { list: watch } = useWatchlist();
   const { stocks: live, status } = useLiveStocks(stocks);
@@ -83,13 +87,12 @@ export default function Stocks() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Stock research</h1>
+          <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em]">Stock research</h1>
           <p className="mt-1 text-sm text-sub">Filter by market and sector. {status === 'live' ? 'Prices refresh every minute; valuation multiples re-base to the live price.' : `Showing ${STOCK_SNAPSHOT} research-snapshot prices (live feed unavailable).`}</p>
         </div>
-        <Segmented value={market} onChange={(v) => set('market', v)} options={marketTabs} />
       </div>
 
-      <div className="card mb-6 space-y-4 p-4 sm:p-5">
+      <div className="card mb-4 space-y-4 p-4 sm:p-5">
         <div className="flex flex-col gap-3 md:flex-row">
           <label className="relative flex-1">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sub" />
@@ -116,7 +119,7 @@ export default function Stocks() {
               <Star size={13} fill={onlyWatch ? 'currentColor' : 'none'} /> Watchlist ({watch.length})
             </button>
           </div>
-          <Segmented size="sm" value={view} onChange={(v) => set('view', v === 'grid' ? null : v)} options={[{ value: 'grid', label: <span className="flex items-center gap-1.5"><LayoutGrid size={14} /> Cards</span> }, { value: 'table', label: <span className="flex items-center gap-1.5"><List size={14} /> Table</span> }]} />
+          <Segmented size="sm" value={view} onChange={(v) => set('view', v === 'table' ? null : v)} options={[{ value: 'table', label: <span className="flex items-center gap-1.5"><List size={14} /> Table</span> }, { value: 'grid', label: <span className="flex items-center gap-1.5"><LayoutGrid size={14} /> Cards</span> }]} />
         </div>
       </div>
 
@@ -138,11 +141,11 @@ export default function Stocks() {
               {rows.map((s) => {
                 const up = change(s.price, s.fairValue);
                 return (
-                  <tr key={s.market + s.symbol} className="transition-colors hover:bg-muted/50">
+                  <tr key={s.market + s.symbol} className="transition-colors hover:bg-muted">
                     <td>
                       <Link to={`/stocks/${s.market}/${encodeURIComponent(s.symbol)}`} className="flex items-center gap-2.5 hover:text-brand">
                         <span>{flag(s.market)}</span>
-                        <span><span className="block font-semibold">{s.symbol}</span><span className="block max-w-[12rem] truncate text-xs text-sub">{s.name}</span></span>
+                        <span><span className="tk block">{s.symbol}</span><span className="block max-w-[12rem] truncate text-xs text-sub">{s.name}</span></span>
                       </Link>
                     </td>
                     <td className="text-sub">{s.sector}</td>

@@ -8,16 +8,15 @@ const base = process.argv[2] || 'http://127.0.0.1:4173';
 const steps = [
   ['header Stocks', 'header nav >> text=Stocks', 'Stock research'],
   ['header Screener', 'header nav >> text=Screener', 'Index screener'],
-  ['header IPOs', 'header nav >> text=IPOs', 'IPO desk'],
-  ['IPO card', 'a[href*="#/ipo/"] >> nth=0', null],
-  ['back to IPO desk', 'text=IPO desk', 'IPO desk'],
-  ['header Dashboard', 'header nav >> text=Dashboard', 'Institutional-grade'],
-  ['hero Explore stocks', 'text=Explore stocks', 'Stock research'],
-  ['stock card', 'a[href*="#/stocks/IN/"] >> nth=0', null],
-  ['logo', 'header a >> nth=0', 'Institutional-grade'],
-  ['index card', 'a[href*="#/screener?index="] >> nth=0', 'Index screener'],
-  ['header Weekly Targets', 'header nav >> a[href="#/weekly-targets"]', 'Weekly index targets'],
-  ['header Methodology', 'header nav >> a[href="#/methodology"]', 'Methodology'],
+  ['header IPO desk', 'header nav >> text=IPO desk', 'IPO desk'],
+  ['IPO row', 'a[href*="#/ipo/"] >> nth=0', null],
+  ['crumb to IPO desk', 'main >> text=IPO desk >> nth=0', 'IPO desk'],
+  ['header Overview', 'header nav >> text=Overview', 'Market overview'],
+  ['research pick', 'main a[href*="#/stocks/IN/"] >> nth=0', null],
+  ['logo', 'header a >> nth=0', 'Market overview'],
+  ['All stocks link', 'text=All stocks', 'Stock research'],
+  ['stock row', 'main a[href*="#/stocks/IN/"] >> nth=0', null],
+  ['header Weekly targets', 'header nav >> a[href="#/weekly-targets"]', 'Weekly index targets'],
 ];
 
 (async () => {

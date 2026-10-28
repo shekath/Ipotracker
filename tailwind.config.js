@@ -5,14 +5,16 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        sans: ['Geist', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        mono: ['"Geist Mono"', 'ui-monospace', 'SF Mono', 'Menlo', 'monospace'],
       },
       colors: {
         bg: 'rgb(var(--bg) / <alpha-value>)',
         surface: 'rgb(var(--surface) / <alpha-value>)',
         muted: 'rgb(var(--muted) / <alpha-value>)',
         line: 'rgb(var(--line) / <alpha-value>)',
+        line2: 'rgb(var(--line2) / <alpha-value>)',
+        fg2: 'rgb(var(--fg2) / <alpha-value>)',
         fg: 'rgb(var(--fg) / <alpha-value>)',
         sub: 'rgb(var(--sub) / <alpha-value>)',
         brand: 'rgb(var(--brand) / <alpha-value>)',
@@ -20,7 +22,7 @@ export default {
         down: 'rgb(var(--down) / <alpha-value>)',
         warn: 'rgb(var(--warn) / <alpha-value>)',
       },
-      borderRadius: { xl: '0.875rem', '2xl': '1.125rem' },
+      borderRadius: { xl: '0.75rem', '2xl': '0.875rem' },
     },
   },
   plugins: [],
