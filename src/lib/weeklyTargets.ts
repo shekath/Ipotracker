@@ -119,7 +119,7 @@ export interface WeeklyFeedItem {
   source: string;
   prevWeekLabel: string;
   prev: PrevWeek;
-  current: { price?: number; high?: number; low?: number; asOf?: string } | null;
+  current: { price?: number; high?: number; low?: number; asOf?: string; marketOpen?: boolean } | null;
   prevDay: { close: number; date: string } | null;
   stale?: boolean;
 }

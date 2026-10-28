@@ -10,7 +10,8 @@ import {
 
 const BASE_WORD: Record<Base, string> = { avg: 'average', high: 'high', low: 'low', close: 'close' };
 const STEP_LABEL: Record<Divisor, string> = { 4: 'Range ÷ 4', 2: 'Range ÷ 2', 1: 'Full range' };
-const C = { up: 'rgb(var(--up))', down: 'rgb(var(--down))', pivot: 'rgb(var(--warn))', fg: 'rgb(var(--fg))', sub: 'rgb(var(--sub))', surface: 'rgb(var(--surface))', line: 'rgb(var(--line))', brand: 'rgb(var(--brand))' };
+// Live price uses its own blue so it never reads as an upside (green) or downside (red) level.
+const C = { live: '#3b82f6', up: 'rgb(var(--up))', down: 'rgb(var(--down))', pivot: 'rgb(var(--warn))', fg: 'rgb(var(--fg))', sub: 'rgb(var(--sub))', surface: 'rgb(var(--surface))', line: 'rgb(var(--line))', brand: 'rgb(var(--brand))' };
 
 type Inputs = PrevWeek & { price: number; curClose: number; wkHigh: number; wkLow: number };
 /** Where the price used for the verdict came from: last week's close (default), the current close, or a what-if. */
@@ -53,7 +54,8 @@ export default function WeeklyTargets() {
     let alive = true;
     const run = () => loadFeed().then((r) => { if (alive) { setFeed(r.feed); setLive(r.live); setFailed(false); } }).catch(() => alive && setFailed(true));
     run();
-    const t = setInterval(() => { if (live) run(); }, 60_000);
+    // Every 30 s with live data, so the live-price marker moves during market hours (the API caches for 60 s).
+    const t = setInterval(() => { if (live) run(); }, 30_000);
     return () => { alive = false; clearInterval(t); };
   }, [live]);
 
@@ -66,6 +68,8 @@ export default function WeeklyTargets() {
     : {};
   const v = { ...loaded, ...(edits[index] ?? {}) } as Inputs;
   const def = defaultPrice(item);
+  const dayClose: DayClose | null = item?.prevDay && Number.isFinite(item.prevDay.close) ? item.prevDay : null;
+  const livePx: LivePx | null = live && item?.current?.marketOpen && Number.isFinite(item.current.price) ? { price: item.current.price!, asOf: item.current.asOf } : null;
   const setField = (f: keyof Inputs, n: number) => setEdits((e) => ({ ...e, [index]: { ...(e[index] ?? {}), [f]: n } }));
   const [srcs, setSrcs] = useState<Partial<Record<IndexKey, PriceSrc>>>({});
   const src: PriceSrc = edits[index]?.price === undefined ? 'prev' : srcs[index] ?? 'whatif';
@@ -134,12 +138,15 @@ export default function WeeklyTargets() {
               <h2 className="text-base font-semibold">Where price sits this week</h2>
               <Segmented size="sm" value={String(div) as '4' | '2' | '1'} onChange={(d) => setDiv(Number(d) as Divisor)} options={[{ value: '4', label: 'Range ÷ 4' }, { value: '2', label: '÷ 2' }, { value: '1', label: 'Full' }]} />
             </div>
-            <Rail r={calc.r} s={calc.s} div={div} price={v.price} week={calc.week} hl={hl} setHl={setHl} onPrice={setPrice} step={calc.step} />
+            <Rail r={calc.r} s={calc.s} div={div} price={v.price} week={calc.week} hl={hl} setHl={setHl} onPrice={setPrice} step={calc.step} dayClose={dayClose} livePx={livePx} />
+            <MarketMarkers r={calc.r} dayClose={dayClose} livePx={livePx} liveFeed={live} onUse={(p) => usePrice(p, 'current')} />
             <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-sub">
               <Legend color="bg-up" text="Upside target" />
               <Legend color="bg-down" text="Downside target" />
               <Legend color="bg-warn" text="Pivot (last week's average)" />
               <Legend color="bg-sub" text="Last week's high / low / close" />
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rotate-45 border-2 border-fg bg-surface" />Last close</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: C.live }} />Live price (market hours)</span>
               <span>Drag the handle or use ← → to try a price</span>
             </div>
           </section>
@@ -284,6 +291,46 @@ function Hero({ name, r, s, price, def, src, weekLabel, curClose, onPrice, onUse
   );
 }
 
+type DayClose = { close: number; date: string };
+type LivePx = { price: number; asOf?: string };
+const dayLabel = (iso: string) => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/** The last session close (changes daily) and, during market hours, the live price. Click either to use it. */
+function MarketMarkers({ r, dayClose, livePx, liveFeed, onUse }: { r: WeeklyResult; dayClose: DayClose | null; livePx: LivePx | null; liveFeed: boolean; onUse: (p: number) => void }) {
+  const side = (p: number) => (p > r.avg ? 'text-up' : p < r.avg ? 'text-down' : 'text-sub');
+  const time = livePx?.asOf ? new Date(livePx.asOf).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : '';
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {dayClose && (
+        <button className="flex items-center gap-2.5 rounded-xl border border-line px-3 py-2 text-left text-sm transition-colors hover:bg-muted" onClick={() => onUse(dayClose.close)} title="Use this price">
+          <span className="h-2.5 w-2.5 shrink-0 rotate-45 border-2 border-fg bg-surface" />
+          <span>
+            <span className="block text-xs text-sub">Last close · {dayLabel(dayClose.date)}</span>
+            <span className="num font-semibold">{fmt(dayClose.close)}</span> <span className={clsx('num text-xs', side(dayClose.close))}>{sgn(dayClose.close - r.avg)} vs pivot</span>
+          </span>
+        </button>
+      )}
+      {livePx ? (
+        <button className="flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left text-sm transition-colors hover:bg-muted" style={{ borderColor: C.live }} onClick={() => onUse(livePx.price)} title="Use this price">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="absolute inline-flex h-full w-full rounded-full opacity-60 motion-safe:animate-ping" style={{ background: C.live }} />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ background: C.live }} />
+          </span>
+          <span>
+            <span className="block text-xs text-sub">Live price{time ? ` · ${time} IST` : ''}</span>
+            <span className="num font-semibold">{fmt(livePx.price)}</span> <span className={clsx('num text-xs', side(livePx.price))}>{sgn(livePx.price - r.avg)} vs pivot</span>
+          </span>
+        </button>
+      ) : (
+        <span className="flex items-center gap-2.5 rounded-xl border border-dashed border-line px-3 py-2 text-xs text-sub">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-line" />
+          {liveFeed ? 'Market closed. The live price marker appears 9:15 am – 3:30 pm IST, Mon–Fri.' : 'Live price shows here during market hours when the live feed is connected.'}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ---------- Rail ----------
 function useWidth<T extends HTMLElement | SVGSVGElement>() {
   const ref = useRef<T>(null);
@@ -298,16 +345,17 @@ function useWidth<T extends HTMLElement | SVGSVGElement>() {
   return [ref, w] as const;
 }
 
-function Rail({ r, s, div, price, week, hl, setHl, onPrice, step }: {
+function Rail({ r, s, div, price, week, hl, setHl, onPrice, step, dayClose, livePx }: {
   r: WeeklyResult; s: Signal | null; div: Divisor; price: number; week: WeekSoFar | null; hl: string | null;
   setHl: (k: string | null) => void; onPrice: (p: number) => void; step: number;
+  dayClose: DayClose | null; livePx: LivePx | null;
 }) {
   const [ref, width] = useWidth<SVGSVGElement>();
   const [tip, setTip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
   const dragging = useRef(false);
   const W = Math.max(300, width), H = 230, pad = 24, railY = 116, narrow = W < 560;
   const lv = levels(r, div);
-  const vals = [...lv.map((l) => l.price), r.avg, r.inputs.high, r.inputs.low, r.inputs.close];
+  const vals = [...lv.map((l) => l.price), r.avg, r.inputs.high, r.inputs.low, r.inputs.close, ...(dayClose ? [dayClose.close] : []), ...(livePx ? [livePx.price] : [])];
   let lo = Math.min(...vals), hi = Math.max(...vals);
   const m = (hi - lo) * 0.06;
   lo -= m; hi += m;
@@ -398,6 +446,26 @@ function Rail({ r, s, div, price, week, hl, setHl, onPrice, step }: {
         })}
         {lane('up')}
         {lane('down')}
+        {dayClose && (() => {
+          const x = X(dayClose.close);
+          return (
+            <g onPointerEnter={() => showTip(x, railY - 16, [`Last close · ${dayLabel(dayClose.date)}`, fmt(dayClose.close), `${sgn(dayClose.close - r.avg)} vs pivot`])} onPointerLeave={() => setTip(null)}>
+              <rect x={x - 6} y={railY - 6} width={12} height={12} transform={`rotate(45 ${x} ${railY})`} fill={C.surface} stroke={C.fg} strokeWidth={2.5} />
+              <rect x={x - 10} y={railY - 14} width={20} height={28} fill="transparent" />
+            </g>
+          );
+        })()}
+        {livePx && (() => {
+          const x = X(livePx.price);
+          return (
+            <g onPointerEnter={() => showTip(x, railY - 16, ['Live price', fmt(livePx.price), `${sgn(livePx.price - r.avg)} vs pivot`])} onPointerLeave={() => setTip(null)}>
+              <line x1={x} x2={x} y1={railY - 14} y2={railY + 14} stroke={C.live} strokeWidth={2} />
+              <circle cx={x} cy={railY} r={7} fill={C.live} opacity={0.35} className="motion-safe:animate-ping" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+              <circle cx={x} cy={railY} r={6} fill={C.live} stroke={C.surface} strokeWidth={2} />
+              <rect x={x - 10} y={railY - 14} width={20} height={28} fill="transparent" />
+            </g>
+          );
+        })()}
         {Number.isFinite(price) && (
           <g className="cursor-grab active:cursor-grabbing">
             <line x1={hx} x2={hx} y1={railY - 28} y2={railY + 30} stroke={C.fg} strokeWidth={2} />
