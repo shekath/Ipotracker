@@ -44,6 +44,31 @@ function build_timeline(array $r): ?array
     ];
 }
 
+/**
+ * NSE sometimes omits "times" and "offered" for the retail row (only bids are
+ * given). Derive the retail portion as the net issue minus the other
+ * categories' portions, and times = bids / portion.
+ */
+function fill_missing_times(array $cats, ?float $issueShares): array
+{
+    foreach ($cats as $k => $c) {
+        if ($c['times'] === null && $c['offered'] && $c['bid'] !== null) $cats[$k]['times'] = round($c['bid'] / $c['offered'], 2);
+    }
+    $r = $cats['retail'] ?? null;
+    if ($r && $r['times'] === null && $r['bid'] !== null && $issueShares) {
+        $others = 0.0;
+        foreach (['qib', 'nii', 'employee', 'shareholder', 'policyholder'] as $k) $others += (float) ($cats[$k]['offered'] ?? 0);
+        $portion = $issueShares - $others;
+        // Only trust the result when the portion is a sensible share of the issue (retail is 10–35%).
+        if ($portion > 0.05 * $issueShares && $portion < 0.6 * $issueShares) {
+            $cats['retail']['offered'] = $portion;
+            $cats['retail']['times'] = round($r['bid'] / $portion, 2);
+            $cats['retail']['derived'] = true;
+        }
+    }
+    return $cats;
+}
+
 /** Parse loose date ranges like "27-29 Oct", "27 Oct - 2 Nov", "Oct 27-29". */
 function parse_range(?string $s): ?array
 {
@@ -121,6 +146,7 @@ function refresh_ipos(bool $force = false): array
         if ($today < $r['openDate'] || $today > $dayAfter) continue;
         try {
             $cats = nse_subscription($sym);
+            $cats = fill_missing_times($cats, $r['issueShares'] ?? null);
             if ($cats) {
                 $key = min($today, $r['closeDate']);
                 $r['subscription'][$key] = ['time' => $now, 'cats' => $cats];
@@ -147,9 +173,12 @@ function refresh_ipos(bool $force = false): array
             // Not on NSE (yet) — e.g. BSE-only or just announced. Track only if it is current.
             $range = parse_range($row['dates']);
             if (!$range || $range[1] < date('Y-m-d', strtotime('-3 days'))) continue;
+            // Reject garbled dates: a bidding window is at most ~10 days.
+            if ((strtotime($range[1]) - strtotime($range[0])) > 10 * 86400) continue;
             $hit = 'gmp-' . norm_name($row['name']);
+            // NSE lists mainboard issues itself, so tracker-only issues are almost always SME (NSE Emerge / BSE SME).
             $store['ipos'][$hit] = ($store['ipos'][$hit] ?? ['firstSeen' => $today, 'subscription' => [], 'gmp' => [], 'sources' => []]) + [
-                'symbol' => null, 'name' => $row['name'], 'type' => 'Mainboard',
+                'symbol' => null, 'name' => $row['name'], 'type' => 'SME',
             ];
             $store['ipos'][$hit]['openDate'] = $range[0];
             $store['ipos'][$hit]['closeDate'] = $range[1];
@@ -169,6 +198,14 @@ function refresh_ipos(bool $force = false): array
     }
     foreach ($gmp['status'] as $name => $msg) {
         $store['sources']["GMP · $name"] = ['ok' => !str_starts_with($msg, 'HTTP'), 'msg' => $msg, 'at' => $now];
+    }
+
+    // Drop tracker-only placeholders created by older versions (status words in names, garbled dates).
+    foreach ($store['ipos'] as $k => $r) {
+        if (!str_starts_with($k, 'gmp-')) continue;
+        $bad = preg_match('/\b(upcoming|open|closed|listed)$/i', $r['name'] ?? '')
+            || (!empty($r['openDate']) && !empty($r['closeDate']) && strtotime($r['closeDate']) - strtotime($r['openDate']) > 10 * 86400);
+        if ($bad) unset($store['ipos'][$k]);
     }
 
     // 4. Prune issues that listed long ago.
