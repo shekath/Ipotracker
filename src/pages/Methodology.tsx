@@ -35,12 +35,21 @@ const blocks = [
     body: [
       'Weighted score: business quality 25%, financials 25%, valuation 20%, promoter & issue structure 15%, market signals (GMP, sector sentiment) 15%.',
       'Issues that are mostly offer-for-sale, aggressively priced relative to listed peers, or have extreme customer/supplier concentration are penalised.',
+      'New issues are discovered automatically from NSE. Until an analyst reviews the RHP they get a signal-based view: grey-market premium (40%), total subscription (30%) and QIB subscription (30%), on a log scale so 10x counts far more than 2x. GMP alone is capped at “Neutral”.',
+    ],
+  },
+  {
+    title: 'Live data',
+    body: [
+      'Stock prices refresh every minute from Yahoo Finance (optionally Twelve Data) through the site’s own server, so no API keys reach your browser. Prices may be delayed up to 15 minutes depending on the exchange feed.',
+      'Valuation multiples (P/E, P/B, yield, market cap) are re-based to the live price; earnings, targets and fair values come from the latest research and change only when the research is updated.',
+      'IPO subscription is snapshotted from NSE throughout each bidding day (QIB, NII with bNII/sNII split, retail, employee, shareholder). GMP is collected daily from public trackers and is unofficial.',
     ],
   },
   {
     title: 'Data & limitations',
     body: [
-      `Stock data is a research snapshot (${STOCK_SNAPSHOT}); IPO data is as of ${IPO_SNAPSHOT}. Figures are rounded and some are estimates — verify with company filings and exchange data.`,
+      `Fundamentals and researched IPO analyses are from a research snapshot (stocks ${STOCK_SNAPSHOT}, IPOs ${IPO_SNAPSHOT}). Figures are rounded and some are estimates — verify with company filings and exchange data.`,
       'Indian financials are in ₹ crore; US financials in US$ billions. Indian fiscal years end in March; several US companies have non-calendar fiscal years.',
       'This app runs entirely in your browser — no login, no tracking. Your watchlist and theme preference are stored only on this device.',
     ],

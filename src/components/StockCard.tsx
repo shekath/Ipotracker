@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import clsx from 'clsx';
-import type { Stock } from '../types';
+import type { LiveStock, FeedStatus } from '../lib/live';
+import { ChangeTag, LiveDot } from './live';
 import { Badge, ScoreRing } from './ui';
 import { change, fmtMcap, fmtPrice, pct } from '../lib/format';
 import { overallScore, ratingTone } from '../lib/scoring';
@@ -28,7 +29,7 @@ export function WatchButton({ id, className }: { id: string; className?: string 
   );
 }
 
-export default function StockCard({ s }: { s: Stock }) {
+export default function StockCard({ s, status = 'offline' }: { s: LiveStock; status?: FeedStatus }) {
   const upside = change(s.price, s.fairValue);
   const score = overallScore(s);
   return (
@@ -47,8 +48,14 @@ export default function StockCard({ s }: { s: Stock }) {
 
       <div className="mt-5 flex items-end justify-between gap-3">
         <div>
-          <div className="num text-2xl font-bold tracking-tight">{fmtPrice(s.price, s.market)}</div>
-          <div className="mt-1 text-xs text-sub">Mcap {fmtMcap(s.marketCap, s.market)}</div>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="num text-2xl font-bold tracking-tight">{fmtPrice(s.price, s.market)}</span>
+            <ChangeTag q={s.quote} />
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-xs text-sub">
+            <LiveDot status={status} quote={s.quote} />
+            <span>· Mcap {fmtMcap(s.marketCap, s.market)}</span>
+          </div>
         </div>
         <ScoreRing score={score} size={54} />
       </div>

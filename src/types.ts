@@ -79,7 +79,7 @@ export interface Stock {
   fairValue: number;
 }
 
-export type IpoVerdict = 'Apply' | 'Apply · Long Term' | 'Apply · Listing Gains' | 'Neutral' | 'Avoid';
+export type IpoVerdict = 'Apply' | 'Apply · Long Term' | 'Apply · Listing Gains' | 'Neutral' | 'Avoid' | 'Watch';
 
 export interface Ipo {
   id: string;
@@ -118,4 +118,67 @@ export interface PipelineIpo {
   expectedSize: string;
   status: string;
   watchNote: string;
+}
+
+// ---- Live data (served by the PHP backend in /api) ----
+
+export interface LiveQuote {
+  price: number;
+  prevClose: number;
+  change: number;
+  changePct: number;
+  dayHigh: number | null;
+  dayLow: number | null;
+  high52: number | null;
+  low52: number | null;
+  volume: number | null;
+  currency: string | null;
+  time: number;
+  marketOpen: boolean | null;
+  source: string;
+  stale?: boolean;
+}
+
+export type SubCategory = 'qib' | 'nii' | 'bnii' | 'snii' | 'retail' | 'employee' | 'shareholder' | 'policyholder' | 'anchor' | 'total';
+
+export type SubscriptionRow = { date: string; time: number } & Partial<Record<SubCategory, number | null>>;
+
+export interface GmpPoint {
+  date: string;
+  value: number;
+  source: string;
+  time?: number;
+}
+
+export interface Timeline {
+  open: string | null;
+  close: string;
+  allotment: string;
+  refund: string;
+  demat: string;
+  listing: string;
+  estimated: boolean;
+}
+
+export interface LiveIpo {
+  id: string;
+  symbol: string | null;
+  name: string;
+  type: 'Mainboard' | 'SME';
+  openDate: string | null;
+  closeDate: string | null;
+  priceBand: [number, number] | null;
+  lotSize: number | null;
+  issueShares: number | null;
+  firstSeen: string | null;
+  sources: string[];
+  timeline: Timeline | null;
+  subscription: SubscriptionRow[];
+  gmp: GmpPoint[];
+}
+
+export interface SourceStatus {
+  ok: boolean;
+  msg: string;
+  at: number;
 }

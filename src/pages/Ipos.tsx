@@ -1,14 +1,20 @@
 import { useState } from 'react';
-import { Info } from 'lucide-react';
-import { ipos, pipeline, IPO_SNAPSHOT } from '../data';
+import { Info, Radio } from 'lucide-react';
+import clsx from 'clsx';
+import { pipeline } from '../data';
 import IpoCard from '../components/IpoCard';
 import { EmptyState, SectionHeader, Segmented } from '../components/ui';
+import { timeAgo } from '../components/live';
 import { ipoStatus, type IpoStatus } from '../lib/scoring';
+import { useIpoViews } from '../lib/useIpoViews';
 
 type Filter = 'All' | IpoStatus;
 
 export default function Ipos() {
   const [filter, setFilter] = useState<Filter>('All');
+  const [type, setType] = useState<'All' | 'Mainboard' | 'SME'>('Mainboard');
+  const { views, feed, status } = useIpoViews();
+  const ipos = views.filter((i) => type === 'All' || i.type === type);
   const counts = ipos.reduce<Record<string, number>>((acc, i) => {
     const s = ipoStatus(i);
     acc[s] = (acc[s] ?? 0) + 1;
@@ -17,7 +23,7 @@ export default function Ipos() {
   const order: IpoStatus[] = ['Open', 'Upcoming', 'Closed', 'Listed'];
   const rows = ipos
     .filter((i) => filter === 'All' || ipoStatus(i) === filter)
-    .sort((a, b) => order.indexOf(ipoStatus(a)) - order.indexOf(ipoStatus(b)) || a.closeDate.localeCompare(b.closeDate));
+    .sort((a, b) => order.indexOf(ipoStatus(a)) - order.indexOf(ipoStatus(b)) || (a.closeDate ?? '9').localeCompare(b.closeDate ?? '9'));
 
   const opts: { value: Filter; label: string }[] = [
     { value: 'All', label: `All (${ipos.length})` },
@@ -30,9 +36,19 @@ export default function Ipos() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">IPO desk · India</h1>
-            <p className="mt-1 max-w-2xl text-sm text-sub">Ongoing and upcoming mainboard IPOs analysed on business quality, financials, valuation, promoters and market signals. Data as of {IPO_SNAPSHOT}; status updates automatically from issue dates.</p>
+            <p className="mt-1 max-w-2xl text-sm text-sub">New issues are picked up automatically from NSE as soon as they are announced, with day-wise subscription by investor category and grey-market premium. Researched issues carry a full fundamental verdict; others get a market-signal view.</p>
           </div>
-          <Segmented value={filter} onChange={setFilter} options={opts} />
+          <div className="flex flex-wrap gap-2">
+            <Segmented value={type} onChange={setType} options={[{ value: 'Mainboard', label: 'Mainboard' }, { value: 'SME', label: 'SME' }, { value: 'All', label: 'All' }]} />
+            <Segmented value={filter} onChange={setFilter} options={opts} />
+          </div>
+        </div>
+        <div className={clsx('mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border px-4 py-2.5 text-xs', status === 'live' ? 'border-up/30 bg-up/5' : 'border-line bg-muted/40')}>
+          <span className="flex items-center gap-1.5 font-semibold"><Radio size={13} className={status === 'live' ? 'text-up' : 'text-sub'} /> {status === 'live' ? 'Auto-tracking on' : status === 'loading' ? 'Connecting to live feed…' : 'Live feed offline — showing researched issues only'}</span>
+          {feed?.lastRun ? <span className="text-sub">Last update {timeAgo(feed.lastRun)}</span> : null}
+          {feed && Object.entries(feed.sources).map(([k, v]) => (
+            <span key={k} className="flex items-center gap-1 text-sub" title={v.msg}><span className={clsx('h-1.5 w-1.5 rounded-full', v.ok ? 'bg-up' : 'bg-down')} />{k}</span>
+          ))}
         </div>
         <div className="mt-6">
           {rows.length ? (
@@ -56,8 +72,8 @@ export default function Ipos() {
                   <td className="font-semibold">{p.name}</td>
                   <td className="text-sub">{p.sector}</td>
                   <td>{p.expectedSize}</td>
-                  <td className="text-sub">{p.status}</td>
-                  <td className="min-w-[18rem] !whitespace-normal text-sub">{p.watchNote}</td>
+                  <td className="min-w-[12rem] !whitespace-normal text-sub">{p.status}</td>
+                  <td className="min-w-[14rem] !whitespace-normal text-sub">{p.watchNote}</td>
                 </tr>
               ))}
             </tbody>

@@ -49,12 +49,13 @@ export const ratingTone: Record<Rating, 'up' | 'brand' | 'warn' | 'down'> = {
   Sell: 'down',
 };
 
-export const verdictTone: Record<IpoVerdict, 'up' | 'brand' | 'warn' | 'down'> = {
+export const verdictTone: Record<IpoVerdict, 'up' | 'brand' | 'warn' | 'down' | 'neutral'> = {
   Apply: 'up',
   'Apply · Long Term': 'up',
   'Apply · Listing Gains': 'brand',
   Neutral: 'warn',
   Avoid: 'down',
+  Watch: 'neutral',
 };
 
 export function ipoScore(i: Ipo): number {
@@ -64,11 +65,11 @@ export function ipoScore(i: Ipo): number {
 
 export type IpoStatus = 'Upcoming' | 'Open' | 'Closed' | 'Listed';
 
-export function ipoStatus(i: Ipo, now = new Date()): IpoStatus {
+export function ipoStatus(i: { openDate: string | null; closeDate: string | null; listingDate: string | null }, now = new Date()): IpoStatus {
   const day = (iso: string) => new Date(iso + 'T00:00:00');
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (today < day(i.openDate)) return 'Upcoming';
-  if (today <= day(i.closeDate)) return 'Open';
-  if (today < day(i.listingDate)) return 'Closed';
+  if (!i.openDate || today < day(i.openDate)) return 'Upcoming';
+  if (!i.closeDate || today <= day(i.closeDate)) return 'Open';
+  if (!i.listingDate || today < day(i.listingDate)) return 'Closed';
   return 'Listed';
 }

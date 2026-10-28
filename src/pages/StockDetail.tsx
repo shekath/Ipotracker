@@ -10,8 +10,11 @@ import { change, finUnit, fmtDate, fmtFin, fmtMcap, fmtPrice, pct } from '../lib
 import { overallScore, ratingTone, stockPillars } from '../lib/scoring';
 import type { Impact, NewsKind, Stock } from '../types';
 import NotFound from './NotFound';
+import { stockId, useLiveStocks } from '../lib/live';
+import { ChangeTag, LiveDot, PriceChart, timeAgo } from '../components/live';
 
 const sections = [
+  { id: 'chart', label: 'Price chart' },
   { id: 'verdict', label: 'Verdict & targets' },
   { id: 'fundamentals', label: 'Fundamentals' },
   { id: 'business', label: 'Business model' },
@@ -32,7 +35,10 @@ export default function StockDetail() {
   return <StockView key={s.market + s.symbol} s={s} />;
 }
 
-function StockView({ s }: { s: Stock }) {
+function StockView({ s: base }: { s: Stock }) {
+  const one = useMemo(() => [base], [base]);
+  const { stocks: [s], status } = useLiveStocks(one);
+  const q = s.quote;
   const [horizon, setHorizon] = useState<'short' | 'long'>('short');
   const [cmpInput, setCmpInput] = useState('');
   const cmp = Number(cmpInput) > 0 ? Number(cmpInput) : s.price;
@@ -44,21 +50,22 @@ function StockView({ s }: { s: Stock }) {
   const unit = finUnit(s.market);
 
   const levelAlert = useMemo(() => {
-    if (cmp === s.price) return null;
-    const bearish = levels.target < s.price;
+    if (!cmpInput && !q) return null;
+    const bearish = levels.target < levels.entry[0];
     const slHit = bearish ? cmp >= levels.stopLoss : cmp <= levels.stopLoss;
     const tgtHit = bearish ? cmp <= levels.target : cmp >= levels.target;
     if (slHit) return { tone: 'down' as const, text: 'Price has breached the stop loss — thesis invalidated for this horizon. Re-evaluate before acting.' };
     if (tgtHit) return { tone: 'up' as const, text: 'Price has reached the target — consider booking profits or trailing the stop.' };
     if (cmp < levels.entry[0] || cmp > levels.entry[1]) return { tone: 'warn' as const, text: 'Price is outside the suggested entry zone — wait for a better entry or size smaller.' };
     return { tone: 'up' as const, text: 'Price is inside the suggested entry zone.' };
-  }, [cmp, levels, s.price]);
+  }, [cmp, cmpInput, q, levels]);
 
-  const q = s.quarters;
-  const last = q[q.length - 1];
-  const prev = q[q.length - 2];
-  const yoy = q[0];
+  const qs = s.quarters;
+  const last = qs[qs.length - 1];
+  const prev = qs[qs.length - 2];
+  const yoy = qs[0];
   const peers = stocks.filter((p) => p.market === s.market && p.sector === s.sector && p.symbol !== s.symbol);
+  const { stocks: livePeers } = useLiveStocks(useMemo(() => peers, [s.symbol])); // eslint-disable-line react-hooks/exhaustive-deps
   const actuals = s.annual.filter((a) => !a.estimate);
   const lastA = actuals[actuals.length - 1];
   const lastE = s.annual[s.annual.length - 1];
@@ -77,7 +84,7 @@ function StockView({ s }: { s: Stock }) {
     { label: 'Net margin', value: `${m.netMargin}%` },
     { label: 'Revenue CAGR 3Y', value: pct(m.revGrowth3y, 0) },
     { label: 'EPS CAGR 3Y', value: pct(m.epsGrowth3y, 0) },
-    { label: 'Dividend yield', value: `${m.dividendYield}%` },
+    { label: 'Dividend yield', value: `${m.dividendYield.toFixed(2)}%` },
     { label: 'Beta', value: m.beta.toFixed(1) },
   ];
 
@@ -102,8 +109,15 @@ function StockView({ s }: { s: Stock }) {
             <p className="mt-1 text-sm text-sub">{s.industry}</p>
             <div className="mt-5 flex flex-wrap items-end gap-x-6 gap-y-3">
               <div>
-                <div className="num text-4xl font-bold tracking-tight">{fmtPrice(s.price, s.market)}</div>
-                <div className="mt-1 text-xs text-sub">Reference price · {STOCK_SNAPSHOT} snapshot</div>
+                <div className="flex flex-wrap items-baseline gap-x-3">
+                  <span className="num text-4xl font-bold tracking-tight">{fmtPrice(s.price, s.market)}</span>
+                  {q && <span className={q.change >= 0 ? 'num text-base font-semibold text-up' : 'num text-base font-semibold text-down'}>{q.change >= 0 ? '+' : ''}{q.change.toFixed(2)}</span>}
+                  <ChangeTag q={q} className="!text-base" />
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-sub">
+                  <LiveDot status={status} quote={q} />
+                  <span>{q ? `· ${q.source} · ${timeAgo(q.time)}${q.dayLow && q.dayHigh ? ` · Day ${fmtPrice(q.dayLow, s.market)} – ${fmtPrice(q.dayHigh, s.market)}` : ''}` : `· Reference price, ${STOCK_SNAPSHOT} snapshot`}</span>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2 pb-1">
                 <Badge tone={ratingTone[s.rating]} className="!text-sm !px-3 !py-1">{s.rating}</Badge>
@@ -121,6 +135,12 @@ function StockView({ s }: { s: Stock }) {
             </div>
           </div>
         </div>
+        {s.snapshotMismatch && (
+          <div className="mt-5 flex gap-2 rounded-xl bg-warn/10 p-3 text-xs leading-relaxed text-warn">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            The live price differs sharply from our research snapshot ({fmtPrice(base.price, s.market)}) — possibly a split, bonus or major move. Valuation metrics and targets below are from the snapshot and need re-checking.
+          </div>
+        )}
         <div className="mt-6 border-t border-line pt-5">
           <RangeBar low={s.low52} high={s.high52} price={s.price} fair={s.fairValue} market={s.market} />
         </div>
@@ -138,6 +158,13 @@ function StockView({ s }: { s: Stock }) {
       </div>
 
       <div className="mt-8 space-y-10">
+        <section>
+          <SectionHeader id="chart" title="Price chart" subtitle="Daily closes from the live data feed" />
+          <div className="card card-pad">
+            <PriceChart id={stockId(s)} market={s.market} reference={[{ label: 'Fair value', value: s.fairValue }, { label: 'ST target', value: s.shortTerm.target }, { label: 'LT target', value: s.longTerm.target }]} />
+          </div>
+        </section>
+
         {/* Verdict */}
         <section>
           <SectionHeader id="verdict" title="Analyst verdict & trade plan" subtitle="Targets and stop losses for short-term and long-term horizons" />
@@ -146,8 +173,8 @@ function StockView({ s }: { s: Stock }) {
               <div className="flex items-center gap-2 text-sm font-semibold"><Gauge size={16} className="text-brand" /> Investment thesis</div>
               <p className="mt-3 text-[15px] leading-relaxed">{s.thesis}</p>
               <div className="mt-6 rounded-xl border border-line p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold"><Calculator size={16} className="text-brand" /> Check with live price</div>
-                <p className="mt-1 text-xs text-sub">Enter today’s market price to re-check upside and level status.</p>
+                <div className="flex items-center gap-2 text-sm font-semibold"><Calculator size={16} className="text-brand" /> What-if price</div>
+                <p className="mt-1 text-xs text-sub">{q ? 'Levels use the live price. Try another price to test entries and exits.' : 'Enter today’s market price to re-check upside and level status.'}</p>
                 <div className="relative mt-3">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-sub">{s.market === 'IN' ? '₹' : '$'}</span>
                   <input type="number" inputMode="decimal" min="0" step="any" className="input num pl-8" placeholder={String(s.price)} value={cmpInput} onChange={(e) => setCmpInput(e.target.value)} aria-label="Current market price" />
@@ -253,13 +280,13 @@ function StockView({ s }: { s: Stock }) {
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-brand" />Revenue (left)</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />Net profit (right)</span>
               </div>
-              <QuarterlyChart data={q} unit={unit} />
+              <QuarterlyChart data={qs} unit={unit} />
             </div>
             <div className="card overflow-x-auto lg:col-span-2">
               <table className="table-base">
                 <thead><tr><th>Quarter</th><th className="!text-right">Revenue</th><th className="!text-right">Profit</th><th className="!text-right">OPM</th></tr></thead>
                 <tbody>
-                  {[...q].reverse().map((r) => (
+                  {[...qs].reverse().map((r) => (
                     <tr key={r.period}>
                       <td className="font-medium">{r.period}</td>
                       <td className="num text-right">{fmtFin(r.revenue, s.market)}</td>
@@ -335,7 +362,7 @@ function StockView({ s }: { s: Stock }) {
               <table className="table-base">
                 <thead><tr><th>Company</th><th className="!text-right">P/E</th><th className="!text-right">Fwd P/E</th><th className="!text-right">ROE</th><th className="!text-right">Net margin</th><th className="!text-right">EPS 3Y</th><th>Rating</th><th className="!text-right">Upside</th></tr></thead>
                 <tbody>
-                  {[s, ...peers].map((p) => {
+                  {[s, ...livePeers].map((p) => {
                     const up = change(p.price, p.fairValue);
                     return (
                       <tr key={p.symbol} className={clsx(p.symbol === s.symbol && 'bg-brand/5')}>

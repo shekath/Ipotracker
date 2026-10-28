@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: './',
+  // `npm run dev:api` serves the PHP backend; Vite forwards /api to it during development.
+  server: { proxy: { '/api': 'http://127.0.0.1:8000' } },
   build: {
     rollupOptions: {
       output: {

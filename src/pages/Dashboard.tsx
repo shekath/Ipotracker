@@ -2,17 +2,22 @@ import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { ArrowRight, Rocket, ShieldCheck, Sparkles, Target } from 'lucide-react';
 import clsx from 'clsx';
-import { stocks, ipos, STOCK_SNAPSHOT, IPO_SNAPSHOT } from '../data';
+import { stocks, STOCK_SNAPSHOT } from '../data';
 import StockCard from '../components/StockCard';
 import IpoCard from '../components/IpoCard';
 import { Badge, SectionHeader, Segmented } from '../components/ui';
 import { change, pct } from '../lib/format';
 import { ipoStatus, overallScore } from '../lib/scoring';
+import { useIpoViews } from '../lib/useIpoViews';
+import { useLiveStocks } from '../lib/live';
+import { LiveDot } from '../components/live';
 import type { Market } from '../types';
 
 export default function Dashboard() {
   const [market, setMarket] = useState<Market | 'ALL'>('ALL');
-  const pool = stocks.filter((s) => market === 'ALL' || s.market === market);
+  const { stocks: live, status } = useLiveStocks(stocks);
+  const pool = live.filter((s) => market === 'ALL' || s.market === market);
+  const { views } = useIpoViews();
 
   const topPicks = useMemo(
     () =>
@@ -35,7 +40,7 @@ export default function Dashboard() {
     return [...m.entries()].map(([sector, e]) => ({ sector, n: e.n, up: e.up / e.n, score: Math.round(e.score / e.n) })).sort((a, b) => b.up - a.up);
   }, [pool]);
 
-  const liveIpos = ipos.filter((i) => ['Open', 'Upcoming'].includes(ipoStatus(i)));
+  const liveIpos = views.filter((i) => i.type === 'Mainboard' && ['Open', 'Upcoming'].includes(ipoStatus(i)));
   const avgUpside = pool.reduce((a, s) => a + change(s.price, s.fairValue), 0) / pool.length;
   const buys = pool.filter((s) => ['Strong Buy', 'Buy', 'Accumulate'].includes(s.rating)).length;
   const maxUp = Math.max(...sectorStats.map((s) => Math.abs(s.up)), 1);
@@ -46,7 +51,7 @@ export default function Dashboard() {
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
         <div className="relative max-w-3xl">
-          <Badge tone="brand" className="!whitespace-normal"><Sparkles size={12} className="shrink-0" /> Research snapshot · Stocks {STOCK_SNAPSHOT} · IPOs {IPO_SNAPSHOT}</Badge>
+          <Badge tone="brand" className="!whitespace-normal"><Sparkles size={12} className="shrink-0" /> {status === 'live' ? 'Live prices · auto-tracked IPOs' : `Research snapshot · ${STOCK_SNAPSHOT}`}</Badge>
           <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-5xl sm:leading-[1.1]">
             Institutional-grade research for <span className="text-brand">Indian & US</span> markets.
           </h1>
@@ -62,13 +67,13 @@ export default function Dashboard() {
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {[
-          { label: 'Stocks covered', value: stocks.length, hint: `${stocks.filter((s) => s.market === 'IN').length} India · ${stocks.filter((s) => s.market === 'US').length} US` },
+          { label: 'Stocks covered', value: stocks.length, dot: true, hint: `${stocks.filter((s) => s.market === 'IN').length} India · ${stocks.filter((s) => s.market === 'US').length} US` },
           { label: 'Positive ratings', value: `${buys}/${pool.length}`, hint: 'Strong Buy, Buy, Accumulate' },
           { label: 'Avg. upside to FV', value: pct(avgUpside), hint: 'Across selected market', tone: avgUpside >= 0 ? 'text-up' : 'text-down' },
           { label: 'Live IPOs', value: liveIpos.length, hint: 'Open or opening soon' },
         ].map((k) => (
           <div key={k.label} className="card p-4 sm:p-5">
-            <div className="label">{k.label}</div>
+            <div className="flex items-center justify-between gap-2"><span className="label">{k.label}</span>{'dot' in k && <LiveDot status={status} quote={pool.find((s) => s.quote)?.quote} />}</div>
             <div className={clsx('num mt-2 text-2xl font-bold sm:text-3xl', k.tone)}>{k.value}</div>
             <div className="mt-1 text-xs text-sub">{k.hint}</div>
           </div>
@@ -82,7 +87,7 @@ export default function Dashboard() {
           right={<Segmented value={market} onChange={setMarket} options={[{ value: 'ALL', label: 'All' }, { value: 'IN', label: '🇮🇳 India' }, { value: 'US', label: '🇺🇸 US' }]} />}
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {topPicks.map((s) => <StockCard key={s.market + s.symbol} s={s} />)}
+          {topPicks.map((s) => <StockCard key={s.market + s.symbol} s={s} status={status} />)}
         </div>
       </section>
 

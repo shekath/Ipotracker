@@ -1,22 +1,22 @@
 import { Link } from 'react-router-dom';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Radio } from 'lucide-react';
 import clsx from 'clsx';
-import type { Ipo } from '../types';
 import { Badge, ScoreRing, type Tone } from './ui';
 import { fmtCr, fmtDate } from '../lib/format';
-import { ipoScore, ipoStatus, verdictTone, type IpoStatus } from '../lib/scoring';
+import { ipoStatus, verdictTone, type IpoStatus } from '../lib/scoring';
+import type { IpoView } from '../lib/ipoView';
 
 export const statusTone: Record<IpoStatus, Tone> = { Open: 'up', Upcoming: 'brand', Closed: 'warn', Listed: 'neutral' };
 
-export function minInvestment(i: Ipo) {
-  return i.lotSize ? i.lotSize * i.priceBand[1] : undefined;
-}
+export const minInvestment = (i: Pick<IpoView, 'lotSize' | 'priceBand'>) => (i.lotSize && i.priceBand ? i.lotSize * i.priceBand[1] : undefined);
 
-export default function IpoCard({ ipo }: { ipo: Ipo }) {
+export const gmpPct = (i: Pick<IpoView, 'gmp' | 'priceBand'>) => (i.gmp != null && i.priceBand ? (i.gmp / i.priceBand[1]) * 100 : undefined);
+
+export default function IpoCard({ ipo }: { ipo: IpoView }) {
   const status = ipoStatus(ipo);
-  const score = ipoScore(ipo);
-  const gmpPct = ipo.gmp != null ? (ipo.gmp / ipo.priceBand[1]) * 100 : undefined;
+  const g = gmpPct(ipo);
   const minInv = minInvestment(ipo);
+  const total = ipo.latestSub?.total;
   return (
     <Link to={`/ipo/${ipo.id}`} className="card group flex min-w-0 flex-col p-5 transition-all hover:-translate-y-0.5 hover:border-fg/20 hover:shadow-lg hover:shadow-black/5">
       <div className="flex items-start justify-between gap-3">
@@ -27,38 +27,42 @@ export default function IpoCard({ ipo }: { ipo: Ipo }) {
               {status}
             </Badge>
             <span className="text-xs text-sub">{ipo.type}</span>
+            {ipo.live && !ipo.curated && <Badge tone="brand"><Radio size={11} /> Auto-tracked</Badge>}
           </div>
           <h3 className="mt-2 text-base font-semibold leading-snug group-hover:text-brand">{ipo.name}</h3>
-          <div className="mt-0.5 text-xs text-sub">{ipo.sector}</div>
+          <div className="mt-0.5 text-xs text-sub">{ipo.sector ?? (ipo.live?.symbol ? `NSE: ${ipo.live.symbol}` : 'Details from exchange filings')}</div>
         </div>
-        <ScoreRing score={score} size={54} />
+        {ipo.score != null ? <ScoreRing score={ipo.score} size={54} /> : null}
       </div>
 
       <div className="mt-5 grid grid-cols-3 gap-3 text-sm">
         <div>
           <div className="label">Price band</div>
-          <div className="num mt-1 font-semibold">₹{ipo.priceBand[0]}–{ipo.priceBand[1]}</div>
+          <div className="num mt-1 font-semibold">{ipo.priceBand ? `₹${ipo.priceBand[0]}–${ipo.priceBand[1]}` : 'TBA'}</div>
         </div>
         <div>
-          <div className="label">Issue size</div>
-          <div className="num mt-1 font-semibold">{fmtCr(ipo.issueSizeCr)}</div>
+          <div className="label">{total != null ? 'Subscribed' : 'Issue size'}</div>
+          <div className={clsx('num mt-1 font-semibold', total != null && (total >= 1 ? 'text-up' : 'text-warn'))}>
+            {total != null ? `${total.toFixed(2)}x` : ipo.issueSizeCr ? fmtCr(ipo.issueSizeCr) : '—'}
+          </div>
         </div>
         <div>
           <div className="label">GMP</div>
-          <div className={clsx('num mt-1 font-semibold', gmpPct == null ? 'text-sub' : gmpPct > 5 ? 'text-up' : 'text-warn')}>
-            {gmpPct == null ? 'N/A' : `${gmpPct.toFixed(1)}%`}
+          <div className={clsx('num mt-1 font-semibold', g == null ? 'text-sub' : g > 5 ? 'text-up' : g < 0 ? 'text-down' : 'text-warn')}>
+            {g == null ? 'N/A' : `₹${ipo.gmp} · ${g.toFixed(0)}%`}
           </div>
         </div>
       </div>
 
       <div className="mt-4 flex items-center gap-2 text-xs text-sub">
-        <CalendarDays size={14} />
-        {fmtDate(ipo.openDate)} – {fmtDate(ipo.closeDate)} · Lists {fmtDate(ipo.listingDate)}
-        {minInv && <span className="ml-auto num">Min ₹{minInv.toLocaleString('en-IN')}</span>}
+        <CalendarDays size={14} className="shrink-0" />
+        {ipo.openDate && ipo.closeDate ? `${fmtDate(ipo.openDate)} – ${fmtDate(ipo.closeDate)}` : 'Dates TBA'}
+        {ipo.listingDate && ` · Lists ${fmtDate(ipo.listingDate)}`}
+        {minInv && <span className="num ml-auto">Min ₹{minInv.toLocaleString('en-IN')}</span>}
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-2 border-t border-line pt-4">
-        <span className="text-xs text-sub">Our view</span>
+        <span className="text-xs text-sub">{ipo.basis === 'research' ? 'Our view' : ipo.basis === 'signals' ? 'Signal-based view' : 'Awaiting data'}</span>
         <Badge tone={verdictTone[ipo.verdict]}>{ipo.verdict}</Badge>
       </div>
     </Link>

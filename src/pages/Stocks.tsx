@@ -8,6 +8,8 @@ import { Badge, EmptyState, ScoreRing, Segmented } from '../components/ui';
 import { change, fmtMcap, fmtPrice, pct } from '../lib/format';
 import { overallScore, ratingTone } from '../lib/scoring';
 import { useWatchlist } from '../lib/watchlist';
+import { useLiveStocks } from '../lib/live';
+import { ChangeTag, LiveDot } from '../components/live';
 import type { Market, Rating } from '../types';
 
 type SortKey = 'upside' | 'score' | 'mcap' | 'pe' | 'growth' | 'roe';
@@ -31,6 +33,7 @@ export default function Stocks() {
   const view = params.get('view') === 'table' ? 'table' : 'grid';
   const onlyWatch = params.get('watch') === '1';
   const { list: watch } = useWatchlist();
+  const { stocks: live, status } = useLiveStocks(stocks);
 
   const set = (k: string, v: string | null) => {
     const next = new URLSearchParams(params);
@@ -44,7 +47,7 @@ export default function Stocks() {
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const r = stocks.filter(
+    const r = live.filter(
       (s) =>
         (market === 'ALL' || s.market === market) &&
         (sector === 'All' || s.sector === sector) &&
@@ -63,14 +66,14 @@ export default function Stocks() {
       pe: (s) => s.metrics.pe,
     };
     return r.sort((a, b) => key[sort](a) - key[sort](b));
-  }, [market, sector, rating, q, sort, onlyWatch, watch]);
+  }, [live, market, sector, rating, q, sort, onlyWatch, watch]);
 
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Stock research</h1>
-          <p className="mt-1 text-sm text-sub">Filter by market and sector. Reference prices as of the {STOCK_SNAPSHOT} research snapshot.</p>
+          <p className="mt-1 text-sm text-sub">Filter by market and sector. {status === 'live' ? 'Prices refresh every minute; valuation multiples re-base to the live price.' : `Showing ${STOCK_SNAPSHOT} research-snapshot prices (live feed unavailable).`}</p>
         </div>
         <Segmented value={market as Market | 'ALL'} onChange={(v) => set('market', v)} options={[{ value: 'ALL', label: 'All markets' }, { value: 'IN', label: '🇮🇳 India' }, { value: 'US', label: '🇺🇸 US' }]} />
       </div>
@@ -110,14 +113,14 @@ export default function Stocks() {
         <EmptyState title="No stocks match" body={onlyWatch ? 'Your watchlist is empty for these filters. Tap the star on any stock to add it.' : 'Try clearing a filter or searching for something else.'} action={<button className="btn-ghost border border-line" onClick={() => setParams({})}>Reset filters</button>} />
       ) : view === 'grid' ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((s) => <StockCard key={s.market + s.symbol} s={s} />)}
+          {rows.map((s) => <StockCard key={s.market + s.symbol} s={s} status={status} />)}
         </div>
       ) : (
         <div className="card overflow-x-auto">
           <table className="table-base">
             <thead>
               <tr>
-                <th>Company</th><th>Sector</th><th className="!text-right">Price</th><th className="!text-right">Mcap</th><th className="!text-right">P/E</th><th className="!text-right">ROE</th><th className="!text-right">EPS 3Y</th><th>Rating</th><th className="!text-right">Upside</th><th className="!text-center">Score</th><th />
+                <th>Company</th><th>Sector</th><th className="!text-right">Price</th><th className="!text-right">Day</th><th className="!text-right">Mcap</th><th className="!text-right">P/E</th><th className="!text-right">ROE</th><th className="!text-right">EPS 3Y</th><th>Rating</th><th className="!text-right">Upside</th><th className="!text-center">Score</th><th />
               </tr>
             </thead>
             <tbody>
@@ -133,6 +136,7 @@ export default function Stocks() {
                     </td>
                     <td className="text-sub">{s.sector}</td>
                     <td className="num text-right font-medium">{fmtPrice(s.price, s.market)}</td>
+                    <td className="text-right">{s.quote ? <ChangeTag q={s.quote} className="!text-xs" /> : <LiveDot status={status} />}</td>
                     <td className="num text-right text-sub">{fmtMcap(s.marketCap, s.market)}</td>
                     <td className="num text-right">{s.metrics.pe.toFixed(1)}</td>
                     <td className="num text-right">{s.metrics.roe}%</td>
