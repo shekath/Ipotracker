@@ -102,6 +102,8 @@ function category_key(string $label): ?string
 function nse_subscription(string $symbol): array
 {
     $data = nse_get('/api/ipo-active-category?symbol=' . rawurlencode($symbol));
+    // Keep the latest raw reply for diagnosing NSE format changes (api/data is not web-accessible).
+    write_json(data_path('cache/nse-sub-' . preg_replace('/[^A-Z0-9]/', '', $symbol) . '.json'), $data);
     $out = [];
     foreach (rows_of($data) as $row) {
         $label = (string) (pick($row, 'category', 'categoryName', 'investorCategory') ?? '');

@@ -19,6 +19,17 @@ function names_match(string $a, string $b): bool
     return $min >= 6 && (str_starts_with($a, $b) || str_starts_with($b, $a));
 }
 
+/** "Ajwa Projects IPO Open", "HGS (India) Upcoming" -> "Ajwa Projects", "HGS (India)" */
+function clean_ipo_name(string $name): string
+{
+    $n = trim($name);
+    do {
+        $prev = $n;
+        $n = trim(preg_replace('/\s*(\b(IPO|SME|BSE|NSE|Upcoming|Open|Opens? Today|Closed|Closes? Today|Listed|Allotted|Allotment)\b|\([^)]*\b(SME|BSE|NSE|Emerge|Upcoming|Open|Closed)\b[^)]*\))\s*$/i', '', $n));
+    } while ($n !== $prev && $n !== '');
+    return $n !== '' ? $n : trim($name);
+}
+
 /**
  * Parse every HTML table that has a GMP column.
  * @return list<array{name:string,gmp:?float,price:?array,dates:?string}>
@@ -65,7 +76,7 @@ function parse_gmp_tables(string $html): array
                 $gmp = (float) str_replace(' ', '', $m[0]);
             }
             $rows[] = [
-                'name' => preg_replace('/\s*(IPO|\(.*?\))\s*$/i', '', $name),
+                'name' => clean_ipo_name($name),
                 'gmp' => $gmp,
                 'price' => $head['price'] !== null ? parse_band($cells[$head['price']] ?? null) : null,
                 'dates' => $head['date'] !== null ? ($cells[$head['date']] ?? null) : null,

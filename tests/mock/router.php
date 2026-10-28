@@ -70,7 +70,7 @@ if (str_starts_with($path, '/api/') && empty($_COOKIE['nsit'])) { http_response_
 $d = fn($off) => date('d-M-Y', strtotime("$off days"));
 if ($path === '/api/ipo-current-issue') {
     echo json_encode([
-        ['symbol' => 'BLSPOLY', 'companyName' => 'BLS Polymers Limited', 'series' => 'EQ', 'issueStartDate' => $d(-1), 'issueEndDate' => $d(1), 'status' => 'Active', 'issuePrice' => 'Rs.142 to Rs.150', 'issueSize' => '17000000', 'noOfTime' => '3.21'],
+        ['symbol' => 'BLSPOLY', 'companyName' => 'BLS Polymers Limited', 'series' => 'EQ', 'issueStartDate' => $d(-1), 'issueEndDate' => $d(1), 'status' => 'Active', 'issuePrice' => 'Rs.142 to Rs.150', 'issueSize' => '11900000', 'noOfTime' => '3.21'],
         ['symbol' => 'TINYSME', 'companyName' => 'Tiny Widgets Limited', 'series' => 'SME', 'issueStartDate' => $d(0), 'issueEndDate' => $d(2), 'status' => 'Active', 'issuePrice' => 'Rs.60 to Rs.64', 'issueSize' => '2000000'],
     ]);
     exit;
@@ -86,7 +86,8 @@ if ($path === '/api/ipo-active-category') {
         ['srNo' => '2', 'category' => 'Non Institutional Investors', 'noOfShareOffered' => '2550000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => (string) round(6.2 * $mult, 2)],
         ['srNo' => '2.1', 'category' => 'Bid Amount of more than Ten Lakh Rupees', 'noOfShareOffered' => '1700000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => (string) round(5.1 * $mult, 2)],
         ['srNo' => '2.2', 'category' => 'Bid Amount of more than two lakh rupees but upto Ten Lakh Rupees', 'noOfShareOffered' => '850000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => (string) round(8.4 * $mult, 2)],
-        ['srNo' => '3', 'category' => 'Retail Individual Investors(RIIs)', 'noOfShareOffered' => '5950000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => (string) round(4.4 * $mult, 2)],
+        // Live NSE omits offered/times for the retail row and only reports bids.
+        ['srNo' => '3', 'category' => 'Retail Individual Investors(RIIs)', 'noOfShareOffered' => '-', 'noOfSharesBid' => (string) (26180000 * $mult), 'noOfTotalMeant' => '-'],
         ['srNo' => '4', 'category' => 'Total', 'noOfShareOffered' => '11900000', 'noOfSharesBid' => '0', 'noOfTotalMeant' => (string) round(3.9 * $mult, 2)],
     ]]);
     exit;
@@ -96,9 +97,10 @@ if ($path === '/gmp.html') {
     header('Content-Type: text/html');
     $open = date('j', strtotime('+1 day')); $close = date('j M', strtotime('+3 days'));
     echo "<html><body><table><thead><tr><th>IPO Name</th><th>IPO GMP</th><th>IPO Price</th><th>Date</th></tr></thead><tbody>
-      <tr><td>BLS Polymers IPO</td><td>₹25 (16.67%)</td><td>₹142-150</td><td>27-29 Oct</td></tr>
+      <tr><td>BLS Polymers IPO Open</td><td>₹25 (16.67%)</td><td>₹142-150</td><td>27-29 Oct</td></tr>
+      <tr><td>Garbled Dates Upcoming</td><td>₹7</td><td>₹99</td><td>30 Nov-3 Nov</td></tr>
       <tr><td>Brand New Tech</td><td>-</td><td>₹400-420</td><td>soon</td></tr>
-      <tr><td>BSE Only Industries IPO</td><td>₹12</td><td>₹90-95</td><td>$open-$close</td></tr>
+      <tr><td>BSE Only Industries IPO (BSE SME) Upcoming</td><td>₹12</td><td>₹90-95</td><td>$open-$close</td></tr>
       <tr><td>Old Listed Co IPO</td><td>₹5</td><td>₹50</td><td>1-3 Jan</td></tr>
     </tbody></table></body></html>";
     exit;

@@ -243,7 +243,7 @@ export function SubscriptionPanel({ rows }: { rows: SubscriptionRow[] }) {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-sub">Times subscribed, excluding the anchor portion. Source: NSE bid data, last updated {timeAgo(last.time)}. QIB = mutual funds, insurers, banks and FPIs; NII = HNIs/corporates; Retail = bids up to ₹2 lakh.</p>
+      <p className="text-xs text-sub">Times subscribed, excluding the anchor portion. Source: NSE bid data, last updated {timeAgo(last.time)}. QIB = mutual funds, insurers, banks and FPIs; NII = HNIs/corporates; Retail = bids up to ₹2 lakh. When NSE omits the retail multiple, it is derived from retail bids ÷ the retail portion of the issue.</p>
     </div>
   );
 }

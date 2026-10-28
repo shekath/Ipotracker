@@ -42,12 +42,15 @@ BLS=$(echo "$I" | j 'array_values(array_filter($d["ipos"], fn($i)=>$i["symbol"]=
 [ "$(echo "$BLS" | j '$d["subscription"][0]["qib"]')" = "1.5" ] || fail "qib: $BLS"
 [ "$(echo "$BLS" | j '$d["subscription"][0]["snii"]')" = "8.4" ] || fail "snii"
 [ "$(echo "$BLS" | j '$d["subscription"][0]["bnii"]')" = "5.1" ] || fail "bnii"
-[ "$(echo "$BLS" | j '$d["subscription"][0]["retail"]')" = "4.4" ] || fail "retail"
+[ "$(echo "$BLS" | j '$d["subscription"][0]["retail"]')" = "4.4" ] || fail "retail derived from bids / (issue - QIB - NII): $BLS"
 [ "$(echo "$BLS" | j '$d["gmp"][0]["value"]')" = "25" ] || fail "gmp: $BLS"
 [ "$(echo "$BLS" | j '$d["priceBand"]')" = "[142,150]" ] || fail "band"
 [ "$(echo "$BLS" | j '$d["timeline"]["estimated"]')" = "true" ] || fail "timeline"
 echo "$I" | j 'in_array("Tiny Widgets Limited", array_column($d["ipos"],"name")) && array_values(array_filter($d["ipos"], fn($i)=>$i["name"]==="Tiny Widgets Limited"))[0]["type"]==="SME"' | grep -q true || fail "SME detection"
 echo "$I" | j 'in_array("Old Listed Co", array_column($d["ipos"],"name"))' | grep -q false || fail "old GMP rows must be ignored"
+echo "$I" | j 'in_array("Garbled Dates", array_column($d["ipos"],"name"))' | grep -q false || fail "garbled date ranges must be rejected"
+echo "$I" | j 'array_values(array_filter($d["ipos"], fn($i)=>$i["id"]==="gmp-onlyindustries"))[0]["name"]' | grep -q '"BSE Only Industries"' || fail "status words stripped from tracker names"
+echo "$I" | j 'array_values(array_filter($d["ipos"], fn($i)=>$i["id"]==="gmp-onlyindustries"))[0]["type"]' | grep -q '"SME"' || fail "tracker-only issues are SME"
 echo "ok ipos"
 
 S=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=nifty50")
