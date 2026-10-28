@@ -71,7 +71,7 @@ How it behaves:
 ### Current deployment: stocks.shekathali.com
 
 The live site is in `public_html/stocks` (the `stocks.shekathali.com` subdomain). It is deployed with Hostinger's Git deploy from the `hostinger-deploy` branch, which contains only the built site.
-- **Update:** run `npm run deploy:branch` on `main`, then redeploy (hPanel → Advanced → Git → Deploy). The redeploy pulls the new build. `api/data/` and `config.local.php` are untracked, so they are kept.
+- **Update:** on `main`, run `npm run deploy:branch` (add `-- --dry-run` to preview without pushing), then redeploy (hPanel → Advanced → Git → Deploy). Each build is committed on top of the current `hostinger-deploy` tip and pushed without force, so the server's `git pull` is always a fast-forward. If the build hasn't changed, nothing is pushed. `api/data/` and `config.local.php` are untracked, so they are kept.
 - **Cron:** `*/15 * * * * /usr/bin/php /home/u321045870/domains/shekathali.com/public_html/stocks/api/cron/update-ipos.php`
 
 ### Troubleshooting
