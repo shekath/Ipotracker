@@ -118,6 +118,10 @@ curl -s "http://127.0.0.1:8098/api/health.php" | j '$d["dataDirWritable"]' | gre
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/lib/http.php")" != "500" ] || true
 # Quant research: universe, coverage gate, picks and the per-stock endpoint.
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/research.php?market=IN")" = "503" ] || fail "research before first run"
+# That visit starts a partial run in the background (the scheduler safety net).
+for _ in $(seq 60); do [ -f "$TMP/data/research-IN.json" ] && break; sleep 0.5; done
+[ "$(j '$d["building"]' < "$TMP/data/research-IN.json")" = "true" ] || fail "visit-triggered research run"
+flock "$TMP/data/research-IN.lock" true # wait for that run to let go
 RR=$(php public/api/cron/update-research.php IN 1000)
 [ "$(echo "$RR" | j '$d[0]["universe"]')" = "124" ] || fail "research universe (Nifty Total Market): $RR"
 [ "$(echo "$RR" | j '$d[0]["building"]')" = "false" ] || fail "research coverage: $RR"
