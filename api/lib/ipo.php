@@ -82,9 +82,13 @@ function parse_range(?string $s): ?array
     if (preg_match('/(\d{1,2})\s*([A-Za-z]{3,})?\s*-\s*(\d{1,2})\s*([A-Za-z]{3,})/', $s, $m)) {
         $open = $mk($m[1], $m[2] ?: $m[4]);
         $close = $mk($m[3], $m[4]);
+        // "30-1 Nov": the open month is left out and the range crosses a month end.
+        if (!$m[2] && $open && (int) $m[1] > (int) $m[3]) $open = date('Y-m-d', strtotime($open . ' -1 month'));
     } elseif (preg_match('/([A-Za-z]{3,})\s*(\d{1,2})\s*-\s*(\d{1,2})/', $s, $m)) {
         $open = $mk($m[2], $m[1]);
         $close = $mk($m[3], $m[1]);
+        // "Oct 30-1": the close falls in the following month.
+        if ($close && (int) $m[3] < (int) $m[2]) $close = date('Y-m-d', strtotime($close . ' +1 month'));
     } else {
         return null;
     }
