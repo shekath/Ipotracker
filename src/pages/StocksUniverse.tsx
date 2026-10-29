@@ -55,6 +55,19 @@ export function CoverageSwitch({ value }: { value: 'all' | 'reports' }) {
   );
 }
 
+/** A labelled dropdown filter: every option stays reachable at any screen width. */
+function Filter<T extends string>({ label, value, onChange, options }: { label: string; value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
+  const on = value !== 'All' && value !== 'all';
+  return (
+    <label className="block min-w-0">
+      <span className="label mb-1.5 block">{label}</span>
+      <select className={clsx('input w-full truncate', on && 'border-brand ring-1 ring-brand/30')} value={value} onChange={(e) => onChange(e.target.value as T)} disabled={options.length < 2}>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
 function Score({ v }: { v: number | null }) {
   if (v == null) return <span className="text-sub">—</span>;
   return (
@@ -95,6 +108,9 @@ export default function UniverseView() {
   const sectors = useMemo(() => [...new Set(rows.map((r) => r.sector).filter(Boolean) as string[])].sort(), [rows]);
   const indices = useMemo(() => [...new Set(rows.flatMap((r) => r.idx))].sort(), [rows]);
   const caps = useMemo(() => ['Mega', 'Large', 'Mid', 'Small', 'Micro'].filter((c) => rows.some((r) => r.cap === c)), [rows]);
+
+  const count = (k: 'sector' | 'cap' | 'idx', v: string) => rows.reduce((n, r) => n + (k === 'idx' ? (r.idx.includes(v) ? 1 : 0) : r[k] === v ? 1 : 0), 0);
+  const active = [q, sector !== 'All', index !== 'All', cap !== 'All', signal !== 'all'].filter(Boolean).length;
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -154,27 +170,25 @@ export default function UniverseView() {
       {data && <div className="mb-4"><RegimeStrip data={data} /></div>}
 
       <div className="card mb-6 space-y-4 p-4 sm:p-5">
-        <div className="flex flex-col gap-3 md:flex-row">
-          <label className="relative flex-1">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sub" />
-            <input className="input pl-10" placeholder="Search by name or symbol…" value={q} onChange={(e) => set('q', e.target.value)} aria-label="Search stocks" />
-          </label>
-          <div className="grid grid-cols-2 gap-3 md:flex">
-            <select className="input md:w-52" value={signal} onChange={(e) => set('signal', e.target.value)} aria-label="Signal">{signals.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
-            <select className="input md:w-44" value={index} onChange={(e) => set('index', e.target.value)} aria-label="Index" disabled={!indices.length}><option value="All">All indices</option>{indices.map((s) => <option key={s}>{s}</option>)}</select>
-          </div>
-        </div>
-        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
-          {['All', ...caps].map((c) => (
-            <button key={c} onClick={() => set('cap', c)} className={clsx('chip', cap === c && 'chip-active')}>{c === 'All' ? 'All sizes' : `${c} cap`}</button>
-          ))}
-          <span className="mx-1 h-5 w-px shrink-0 bg-line" />
-          {['All', ...sectors].map((s) => (
-            <button key={s} onClick={() => set('sector', s)} className={clsx('chip', sector === s && 'chip-active')}>{s === 'All' ? 'All sectors' : s}</button>
-          ))}
+        <label className="relative block">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sub" />
+          <input className="input pl-10" placeholder="Search by name or symbol…" value={q} onChange={(e) => set('q', e.target.value)} aria-label="Search stocks" />
+        </label>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Filter label="Signal" value={signal} onChange={(v) => set('signal', v)} options={signals} />
+          <Filter label="Index" value={index} onChange={(v) => set('index', v)} options={[{ value: 'All', label: 'All indices' }, ...indices.map((s) => ({ value: s, label: `${s} (${count('idx', s)})` }))]} />
+          <Filter label="Size" value={cap} onChange={(v) => set('cap', v)} options={[{ value: 'All', label: 'All sizes' }, ...caps.map((c) => ({ value: c, label: `${c} cap (${count('cap', c)})` }))]} />
+          <Filter label="Sector" value={sector} onChange={(v) => set('sector', v)} options={[{ value: 'All', label: 'All sectors' }, ...sectors.map((s) => ({ value: s, label: `${s} (${count('sector', s)})` }))]} />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-sm text-sub">
-          <span><span className="font-semibold text-fg">{filtered.length.toLocaleString('en-IN')}</span> results{data?.building ? ` · research still building (${data.coverage.history}/${data.universe})` : ''}</span>
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span><span className="font-semibold text-fg">{filtered.length.toLocaleString('en-IN')}</span> results{data?.building ? ` · research still building (${data.coverage.history}/${data.universe})` : ''}</span>
+            {active > 0 && <button className="font-medium text-brand hover:underline" onClick={() => {
+              const next = new URLSearchParams();
+              for (const k of ['sort', 'dir']) if (params.get(k)) next.set(k, params.get(k)!);
+              setParams(next, { replace: true });
+            }}>Clear {active} filter{active > 1 ? 's' : ''}</button>}
+          </span>
           <Link to="/picks" className="btn bg-fg text-bg hover:opacity-90"><Star size={15} /> High-conviction picks</Link>
         </div>
       </div>
