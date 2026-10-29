@@ -10,6 +10,7 @@ import { change, finUnit, fmtDate, fmtFin, fmtMcap, fmtPrice, pct } from '../lib
 import { overallScore, ratingTone, stockPillars } from '../lib/scoring';
 import type { Impact, NewsKind, Stock } from '../types';
 import NotFound from './NotFound';
+import QuantStock from './QuantStock';
 import { stockId, useLiveStocks } from '../lib/live';
 import { ChangeTag, LiveDot, PriceChart, timeAgo } from '../components/live';
 
@@ -30,8 +31,10 @@ const kindIcon: Record<NewsKind, typeof Newspaper> = { Results: LineChart, Deal:
 
 export default function StockDetail() {
   const { market, symbol } = useParams();
-  const s = findStock(market, symbol ? decodeURIComponent(symbol) : undefined);
-  if (!s) return <NotFound />;
+  const sym = symbol ? decodeURIComponent(symbol) : undefined;
+  const s = findStock(market, sym);
+  // Stocks without a written report get the quantitative research page.
+  if (!s) return market === 'IN' || market === 'US' ? <QuantStock key={market + sym} market={market} symbol={(sym ?? '').toUpperCase()} /> : <NotFound />;
   return <StockView key={s.market + s.symbol} s={s} />;
 }
 

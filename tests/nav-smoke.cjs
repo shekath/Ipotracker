@@ -6,6 +6,8 @@ const { chromium } = require('playwright');
 
 const base = process.argv[2] || 'http://127.0.0.1:4173';
 const steps = [
+  ['header Picks', 'header nav >> text=Picks', 'High-conviction picks'],
+  ['pick card', 'main a[href*="#/stocks/IN/"] >> nth=0', null],
   ['header Stocks', 'header nav >> text=Stocks', 'Stock research'],
   ['header Screener', 'header nav >> text=Screener', 'Index screener'],
   ['header IPOs', 'header nav >> text=IPOs', 'IPO desk'],

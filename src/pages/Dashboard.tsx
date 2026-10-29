@@ -14,6 +14,8 @@ import { LiveDot } from '../components/live';
 import { useMarketPref } from '../lib/marketPref';
 import { Flag, marketTabs } from '../components/Flag';
 import { useIndexDefs } from '../lib/screener';
+import { horizonMeta, useResearch, type Horizon, type Pick } from '../lib/research';
+import { fmtPrice } from '../lib/format';
 
 export default function Dashboard() {
   const [market, setMarket] = useMarketPref();
@@ -27,6 +29,13 @@ export default function Dashboard() {
   const losers = [...movers].reverse().filter((s) => s.quote!.changePct < 0).slice(0, 4);
   // Stocks whose live price diverges sharply from the research snapshot (split/bonus) have unreliable fair values.
   const valued = pool.filter((s) => !s.snapshotMismatch);
+
+  // Quant-model picks across the whole market, interleaved so each horizon shows.
+  const { data: quant } = useResearch(market);
+  const modelPicks: { h: Horizon; p: Pick }[] = [];
+  if (quant && !quant.building) {
+    for (let i = 0; i < 4 && modelPicks.length < 8; i++) (['st', 'lt', 'sw'] as Horizon[]).forEach((h) => quant.picks[h][i] && modelPicks.length < 8 && modelPicks.push({ h, p: quant.picks[h][i] }));
+  }
 
   const topPicks = useMemo(
     () =>
@@ -97,9 +106,40 @@ export default function Dashboard() {
         ))}
       </section>
 
+      {modelPicks.length > 0 && (
+        <section>
+          <SectionHeader
+            title="High-conviction picks"
+            subtitle={`Top-ranked of ${quant!.universe.toLocaleString('en-IN')} stocks by the quant model, with entry, target and stop`}
+            right={<Link to="/picks" className="btn-ghost">All picks <ArrowRight size={15} /></Link>}
+          />
+          <div className="card overflow-x-auto">
+            <table className="table-base">
+              <thead><tr><th>Company</th><th>Horizon</th><th className="!text-right">Price</th><th className="!text-right">Buy at</th><th className="!text-right">Target</th><th className="hidden !text-right sm:table-cell">Stop loss</th><th className="hidden !text-right md:table-cell">Reward : Risk</th></tr></thead>
+              <tbody>
+                {modelPicks.map(({ h, p }) => (
+                  <tr key={h + p.symbol} className="transition-colors hover:bg-muted/50">
+                    <td>
+                      <Link to={`/stocks/${market}/${encodeURIComponent(p.symbol)}`} className="font-semibold hover:text-brand">{p.symbol}</Link>
+                      <span className="block max-w-[12rem] truncate text-xs text-sub">{p.name}</span>
+                    </td>
+                    <td><Badge tone="up">{horizonMeta[h].label}</Badge>{p.plan.type && <span className="ml-1.5 text-xs text-sub">{p.plan.type}</span>}</td>
+                    <td className="num text-right">{p.price != null ? fmtPrice(p.price, market) : '—'}</td>
+                    <td className="num text-right">{fmtPrice(p.plan.entry[0], market)}–{fmtPrice(p.plan.entry[1], market).replace(/^[₹$]/, '')}</td>
+                    <td className="num text-right font-semibold text-up">{fmtPrice(p.plan.target, market)}</td>
+                    <td className="num hidden text-right text-down sm:table-cell">{fmtPrice(p.plan.stop, market)}</td>
+                    <td className="num hidden text-right md:table-cell">{p.plan.rr.toFixed(1)}x</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       <section>
         <SectionHeader
-          title="High-conviction picks"
+          title={modelPicks.length ? 'Analyst picks' : 'High-conviction picks'}
           subtitle="Buy-rated, high-conviction names ranked by upside to fair value"
           right={<Link to="/stocks" className="btn-ghost">All {isIN ? 'Indian' : 'US'} stocks <ArrowRight size={15} /></Link>}
         />

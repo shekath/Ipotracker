@@ -8,14 +8,77 @@ $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $q = $_GET;
 header('Content-Type: application/json');
 
+if (preg_match('#^/v8/finance/chart/(.+)$#', $path, $m) && ($q['range'] ?? '') === '2y') {
+    // Research history: a seeded random walk with per-symbol drift and volume spikes,
+    // so trends, pullbacks and breakouts all occur.
+    $sym = urldecode($m[1]);
+    mt_srand(crc32($sym));
+    $drift = (mt_rand(-5, 12)) / 10000;
+    $px = 100 + mt_rand(0, 900);
+    $now = time();
+    $ts = $close = $open = $high = $low = $vol = [];
+    for ($i = 500; $i > 0; $i--) {
+        $ret = $drift + (mt_rand(-1000, 1000) / 1000) * 0.018;
+        $o = $px;
+        $px = max(5, $px * (1 + $ret));
+        $ts[] = $now - $i * 86400;
+        $open[] = round($o, 2);
+        $close[] = round($px, 2);
+        $high[] = round(max($o, $px) * (1 + mt_rand(0, 100) / 10000), 2);
+        $low[] = round(min($o, $px) * (1 - mt_rand(0, 100) / 10000), 2);
+        $vol[] = mt_rand(80, 120) * 1000 * (mt_rand(0, 20) === 0 ? 2 : 1);
+    }
+    echo json_encode(['chart' => ['result' => [[
+        'meta' => ['symbol' => $sym, 'regularMarketPrice' => $px, 'previousClose' => $close[count($close) - 2]],
+        'timestamp' => $ts,
+        'indicators' => ['quote' => [['close' => $close, 'open' => $open, 'high' => $high, 'low' => $low, 'volume' => $vol]]],
+    ]], 'error' => null]]);
+    exit;
+}
+
+// Yahoo v10 quoteSummary (fundamentals), needs the crumb like v7.
+if (preg_match('#^/v10/finance/quoteSummary/(.+)$#', $path, $m)) {
+    if (($q['crumb'] ?? '') !== 'mockcrumb' || empty($_COOKIE['A3'])) { http_response_code(401); echo '{}'; exit; }
+    $sym = urldecode($m[1]);
+    if ($sym === 'NODATA.NS') { http_response_code(404); echo '{"quoteSummary":{"result":null}}'; exit; }
+    $k = crc32($sym);
+    $raw = fn($v) => ['raw' => $v, 'fmt' => (string) $v];
+    echo json_encode(['quoteSummary' => ['result' => [[
+        'financialData' => ['returnOnEquity' => $raw(0.05 + ($k % 30) / 100), 'operatingMargins' => $raw(0.05 + ($k % 25) / 100), 'profitMargins' => $raw(0.03 + ($k % 20) / 100),
+            'revenueGrowth' => $raw((($k % 40) - 10) / 100), 'earningsGrowth' => $raw((($k % 50) - 15) / 100), 'debtToEquity' => $raw(($k % 180)), 'currentRatio' => $raw(1.2),
+            'freeCashflow' => $raw(1e9), 'targetMeanPrice' => $raw(100 + ($k % 900) * 1.2), 'recommendationMean' => $raw(1.5 + ($k % 30) / 10), 'numberOfAnalystOpinions' => $raw(5 + $k % 20)],
+        'defaultKeyStatistics' => ['forwardEps' => $raw(10 + $k % 40), 'trailingEps' => $raw(9 + $k % 35), 'enterpriseToEbitda' => $raw(6 + $k % 25), 'pegRatio' => $raw(1.4), 'heldPercentInsiders' => $raw(0.4)],
+        'summaryDetail' => ['beta' => $raw(0.8 + ($k % 8) / 10)],
+        'calendarEvents' => ['earnings' => ['earningsDate' => [$raw(time() + (5 + $k % 80) * 86400)]]],
+    ]], 'error' => null]]);
+    exit;
+}
+
+// S&P 500 constituents CSV and the Nasdaq-100 page.
+if ($path === '/sp500.csv') {
+    header('Content-Type: text/csv');
+    echo "Symbol,Security,GICS Sector,GICS Sub-Industry\n";
+    foreach (['AAPL' => 'Information Technology', 'MSFT' => 'Information Technology', 'JPM' => 'Financials', 'XOM' => 'Energy', 'BRK.B' => 'Financials'] as $sy => $sec) echo "$sy,$sy Inc.,$sec,x\n";
+    for ($i = 1; $i <= 420; $i++) echo "US$i,US Company $i," . ['Industrials', 'Health Care', 'Utilities', 'Materials'][$i % 4] . ",x\n";
+    exit;
+}
+if ($path === '/ndx') {
+    header('Content-Type: text/html');
+    echo '<table id="constituents"><tr><th>Company</th><th>Ticker</th><th>GICS Sector</th></tr>';
+    for ($i = 1; $i <= 90; $i++) echo "<tr><td>NQ Co $i</td><td>" . ($i <= 2 ? ['AAPL', 'MSFT'][$i - 1] : "NQ$i") . '</td><td>Information Technology</td></tr>';
+    echo '</table>';
+    exit;
+}
+
 if (preg_match('#^/v8/finance/chart/(.+)$#', $path, $m)) {
     $sym = urldecode($m[1]);
     if ($sym === 'FAIL.NS') { http_response_code(404); echo '{"chart":{"error":"not found"}}'; exit; }
     $base = 100 + (crc32($sym) % 900);
     $now = time();
     $range = $q['range'] ?? '1d';
-    $n = ['1d' => 1, '1mo' => 22, '3mo' => 63, '6mo' => 126, '1y' => 250, '5y' => 260][$range] ?? 1;
-    $daySec = 86400;
+    $intraday = ($q['interval'] ?? '') === '5m';
+    $n = $intraday ? 75 : (['1d' => 1, '1mo' => 22, '3mo' => 63, '6mo' => 126, '1y' => 250, '5y' => 260][$range] ?? 1);
+    $daySec = $intraday ? 300 : 86400;
     if (($q['interval'] ?? '') === '1wk') { $n = (int) ceil($n / 5); $daySec = 7 * 86400; } // weekly candles, last one = this week
     $ts = []; $close = []; $open = []; $high = []; $low = [];
     for ($i = $n; $i > 0; $i--) {
@@ -61,6 +124,12 @@ if ($path === '/v7/finance/quote') {
 // niftyindices.com constituent CSVs
 if (preg_match('#^/IndexConstituent/(.+)\.csv$#', $path, $m)) {
     header('Content-Type: text/csv');
+    if ($m[1] === 'ind_niftytotalmarket_list') {
+        echo "Company Name,Industry,Symbol,Series,ISIN Code\r\n";
+        foreach ([['Reliance Industries Ltd.', 'Oil Gas & Consumable Fuels', 'RELIANCE'], ['HDFC Bank Ltd.', 'Financial Services', 'HDFCBANK'], ['Infosys Ltd.', 'Information Technology', 'INFY'], ['No Data Ltd.', 'Services', 'NODATA']] as $r) echo "\"{$r[0]}\",{$r[1]},{$r[2]},EQ,INE000000000\r\n";
+        for ($i = 1; $i <= 120; $i++) echo "Total Co $i Ltd.," . ['Capital Goods', 'Healthcare', 'Chemicals', 'Financial Services', 'Automobile and Auto Components'][$i % 5] . ",TOTAL$i,EQ,INE000000000\r\n";
+        exit;
+    }
     if ($m[1] === 'ind_nifty500list') {
         echo "Company Name,Industry,Symbol,Series,ISIN Code\r\n";
         for ($i = 1; $i <= 60; $i++) echo "Broad Co $i Ltd.,Services,BROAD$i,EQ,INE000000000\r\n";

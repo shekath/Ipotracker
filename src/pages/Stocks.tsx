@@ -13,6 +13,8 @@ import { ChangeTag, LiveDot } from '../components/live';
 import { useMarketPref } from '../lib/marketPref';
 import { marketTabs } from '../components/Flag';
 import type { Market, Rating } from '../types';
+import UniverseView, { CoverageSwitch } from './StocksUniverse';
+import { useResearch } from '../lib/research';
 
 type SortKey = 'upside' | 'score' | 'mcap' | 'pe' | 'growth' | 'roe';
 const sorts: { value: SortKey; label: string }[] = [
@@ -25,7 +27,8 @@ const sorts: { value: SortKey; label: string }[] = [
 ];
 const ratings: (Rating | 'All')[] = ['All', 'Strong Buy', 'Buy', 'Accumulate', 'Hold', 'Reduce', 'Sell'];
 
-export default function Stocks() {
+/** The written analyst reports (the original Stocks page). */
+function ReportsView() {
   const [params, setParams] = useSearchParams();
   const [pref, setPref] = useMarketPref();
   const urlMarket = params.get('market');
@@ -86,7 +89,10 @@ export default function Stocks() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Stock research</h1>
           <p className="mt-1 text-sm text-sub">Filter by market and sector. {status === 'live' ? 'Prices refresh every minute; valuation multiples re-base to the live price.' : `Showing ${STOCK_SNAPSHOT} research-snapshot prices (live feed unavailable).`}</p>
         </div>
-        <Segmented value={market} onChange={(v) => set('market', v)} options={marketTabs} />
+        <div className="flex flex-wrap gap-2">
+          <CoverageSwitch value="reports" />
+          <Segmented value={market} onChange={(v) => set('market', v)} options={marketTabs} />
+        </div>
       </div>
 
       <div className="card mb-6 space-y-4 p-4 sm:p-5">
@@ -165,4 +171,13 @@ export default function Stocks() {
       )}
     </div>
   );
+}
+
+/** Full-market research by default; the written reports when asked for (or when research is unavailable). */
+export default function Stocks() {
+  const [params] = useSearchParams();
+  const [market] = useMarketPref();
+  const { data, loading } = useResearch(market);
+  if (params.get('coverage') === 'reports' || (!data && !loading)) return <ReportsView />;
+  return <UniverseView />;
 }

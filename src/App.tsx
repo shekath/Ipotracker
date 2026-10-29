@@ -2,6 +2,7 @@ import { HashRouter, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Stocks from './pages/Stocks';
+import Picks from './pages/Picks';
 import StockDetail from './pages/StockDetail';
 import Ipos from './pages/Ipos';
 import IpoDetail from './pages/IpoDetail';
@@ -16,6 +17,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
+          <Route path="picks" element={<Picks />} />
           <Route path="stocks" element={<Stocks />} />
           <Route path="stocks/:market/:symbol" element={<StockDetail />} />
           <Route path="screener" element={<Screener />} />

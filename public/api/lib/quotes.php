@@ -1,9 +1,18 @@
 <?php
 declare(strict_types=1);
 
-/** "IN:RELIANCE" -> "RELIANCE.NS", "US:AAPL" -> "AAPL" */
+/** Market indices and macro tickers, addressed as "IX:NIFTY" etc. */
+const INDEX_SYMBOLS = [
+    'NIFTY' => '^NSEI', 'SENSEX' => '^BSESN', 'BANKNIFTY' => '^NSEBANK', 'NIFTYIT' => '^CNXIT',
+    'MIDCAP' => 'NIFTY_MIDCAP_100.NS', 'INDIAVIX' => '^INDIAVIX', 'USDINR' => 'INR=X',
+    'SPX' => '^GSPC', 'NASDAQ' => '^IXIC', 'DOW' => '^DJI', 'VIX' => '^VIX',
+    'GOLD' => 'GC=F', 'BRENT' => 'BZ=F', 'US10Y' => '^TNX',
+];
+
+/** "IN:RELIANCE" -> "RELIANCE.NS", "US:AAPL" -> "AAPL", "IX:NIFTY" -> "^NSEI" */
 function yahoo_symbol(string $id): ?string
 {
+    if (preg_match('/^IX:([A-Z0-9]{1,12})$/', $id, $m)) return INDEX_SYMBOLS[$m[1]] ?? null;
     if (!preg_match('/^(IN|US):([A-Z0-9&.\-]{1,20})$/', $id, $m)) return null;
     return $m[1] === 'IN' ? $m[2] . '.NS' : str_replace('.', '-', $m[2]);
 }
@@ -94,6 +103,7 @@ function get_quotes(array $ids): array
         $urls = [];
         foreach ($missing as $id) {
             [$mkt, $sym] = explode(':', $id, 2);
+            if ($mkt === 'IX') continue; // Twelve Data's free plan has no index quotes
             $q = ['symbol' => $sym, 'apikey' => $key] + ($mkt === 'IN' ? ['exchange' => 'NSE'] : []);
             $urls[$id] = cfg('upstream')['twelvedata'] . '/quote?' . http_build_query($q);
         }
@@ -123,10 +133,12 @@ function get_quotes(array $ids): array
 /** Daily/weekly close series for charts. */
 function get_history(string $id, string $range): array
 {
-    $map = ['1mo' => '1d', '6mo' => '1d', '1y' => '1d', '5y' => '1wk'];
+    $map = ['1d' => '5m', '1mo' => '1d', '6mo' => '1d', '1y' => '1d', '5y' => '1wk'];
     $interval = $map[$range];
     $ck = "h:$id:$range";
-    if ($c = cache_get($ck, (int) cfg('history_ttl', 1800))) return $c;
+    // Intraday series go stale within minutes; daily closes can be cached longer.
+    $ttl = $range === '1d' ? (int) cfg('quote_ttl', 60) * 2 : (int) cfg('history_ttl', 1800);
+    if ($c = cache_get($ck, $ttl)) return $c;
     foreach (cfg('upstream')['yahoo'] as $host) {
         $url = $host . '/v8/finance/chart/' . rawurlencode(yahoo_symbol($id)) . "?range=$range&interval=$interval";
         [$status, $body] = http_get($url);
