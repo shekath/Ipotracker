@@ -67,3 +67,9 @@
 
 .recharts-cartesian-axis-tick-value { font-size: 11px; fill: rgb(var(--sub)); }
 .recharts-tooltip-cursor { fill: rgb(var(--muted)); }
+
+/* Trade plan boxes: four across only when the card itself has room, whatever the screen width. */
+.ladder { container-type: inline-size; }
+@container (min-width: 40rem) {
+  .ladder-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

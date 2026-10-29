@@ -145,8 +145,10 @@ function Marker({ at, label, cls, top }: { at: number; label: string; cls: strin
 
 /** Compact price range, e.g. "₹1,440–1,490" or "$440–480" (no decimals on whole numbers). */
 function fmtRange(lo: number, hi: number, market: Market) {
-  const n = (v: number) => v.toLocaleString(market === 'IN' ? 'en-IN' : 'en-US', { maximumFractionDigits: Number.isInteger(v) ? 0 : 2 });
-  return `${market === 'IN' ? '₹' : '$'}${n(lo)}–${n(hi)}`;
+  // Same precision as fmtPrice; the zero-width space lets a narrow box wrap after the dash.
+  const d = Math.max(lo, hi) < 1000 ? 2 : 0;
+  const n = (v: number) => v.toLocaleString(market === 'IN' ? 'en-IN' : 'en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  return `${market === 'IN' ? '₹' : '$'}${n(lo)}–\u200b${n(hi)}`;
 }
 
 /** Visual trade plan: stop loss, entry zone, reference price and target on one axis. */
@@ -180,24 +182,24 @@ export function TradeLadder({ levels, price, market }: { levels: TradeLevels; pr
   }
 
   return (
-    <div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-brand/40 bg-brand/5 p-3">
+    <div className="ladder">
+      <div className="ladder-grid grid grid-cols-2 gap-3">
+        <div className="min-w-0 rounded-xl border border-brand/40 bg-brand/5 p-3">
           <div className="label">{sellPlan ? 'Sell / exit at' : 'Buy at'}</div>
-          <div className="num mt-1 whitespace-nowrap font-semibold">{fmtRange(lo1, hi1, market)}</div>
+          <div className="num mt-1 break-words font-semibold">{fmtRange(lo1, hi1, market)}</div>
           <div className={clsx('text-xs font-medium', zone.tone)}>{zone.text}</div>
         </div>
-        <div className="rounded-xl bg-muted/60 p-3">
+        <div className="min-w-0 rounded-xl bg-muted/60 p-3">
           <div className="label">Target</div>
           <div className="num mt-1 font-semibold">{fmtPrice(levels.target, market)}</div>
           <div className={clsx('num text-xs font-medium', upside >= 0 ? 'text-up' : 'text-down')}>{pct(upside)} from CMP</div>
         </div>
-        <div className="rounded-xl bg-muted/60 p-3">
+        <div className="min-w-0 rounded-xl bg-muted/60 p-3">
           <div className="label">Stop loss</div>
           <div className="num mt-1 font-semibold">{fmtPrice(levels.stopLoss, market)}</div>
           <div className={clsx('num text-xs font-medium', bearish ? 'text-warn' : 'text-down')}>{pct(risk)} from CMP</div>
         </div>
-        <div className="rounded-xl bg-muted/60 p-3">
+        <div className="min-w-0 rounded-xl bg-muted/60 p-3">
           <div className="label">Reward : Risk</div>
           <div className="num mt-1 font-semibold">{rr.toFixed(1)}x</div>
           <div className="text-xs text-sub">From entry · {levels.horizon}</div>

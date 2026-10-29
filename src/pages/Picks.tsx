@@ -71,7 +71,7 @@ function PickCard({ p, h, market, rank }: { p: Pick; h: Horizon; market: Market;
       </div>
 
       <div className="mt-5 grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-3">
+        <div className="min-w-0 lg:col-span-3">
           <TradeLadder levels={{ entry: plan.entry, target: plan.target, stopLoss: plan.stop, horizon: plan.horizon, rationale: '' }} price={price} market={market} />
           {plan.pool && (
             <p className="mt-3 rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-sub">
@@ -79,7 +79,7 @@ function PickCard({ p, h, market, rank }: { p: Pick; h: Horizon; market: Market;
             </p>
           )}
         </div>
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <div>
             <div className="label mb-2">Why it qualifies</div>
             <BulletList items={why.length ? why : ['Top-ranked on the combined score for this horizon.']} tone="up" />
