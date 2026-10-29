@@ -6,6 +6,8 @@ import { stocks } from '../data';
 import { useIpoViews } from '../lib/useIpoViews';
 import { useIndexDefs } from '../lib/screener';
 import { ipoStatus } from '../lib/scoring';
+import { useResearch } from '../lib/research';
+import { useMarketPref } from '../lib/marketPref';
 
 interface Item {
   group: 'Stocks' | 'IPOs' | 'Indices';
@@ -20,6 +22,8 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const nav = useNavigate();
   const { views } = useIpoViews();
   const defs = useIndexDefs();
+  const [market] = useMarketPref();
+  const { data: research } = useResearch(market);
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -27,10 +31,12 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const items = useMemo<Item[]>(
     () => [
       ...stocks.map((s) => ({ group: 'Stocks' as const, code: s.symbol, title: s.name, meta: `${s.market === 'IN' ? 'India' : 'US'} · ${s.sector}`, to: `/stocks/${s.market}/${encodeURIComponent(s.symbol)}` })),
+      // The whole research universe for the selected market (researched stocks above take precedence).
+      ...(research?.rows ?? []).filter((r) => !stocks.some((s) => s.market === market && s.symbol === r.symbol)).map((r) => ({ group: 'Stocks' as const, code: r.symbol, title: r.name, meta: `${market === 'IN' ? 'India' : 'US'}${r.sector ? ` · ${r.sector}` : ''}`, to: `/stocks/${market}/${encodeURIComponent(r.symbol)}` })),
       ...views.map((i) => ({ group: 'IPOs' as const, code: 'IPO', title: i.name, meta: `${i.type} · ${ipoStatus(i)}`, to: `/ipo/${i.id}` })),
       ...(defs ?? []).map((d) => ({ group: 'Indices' as const, code: d.exchange, title: d.name === 'All' ? `All ${d.market === 'IN' ? 'India' : 'US'} stocks` : d.name, meta: 'Index screener', to: `/screener?index=${d.id}` })),
     ],
-    [views, defs],
+    [views, defs, research, market],
   );
 
   const needle = q.trim().toLowerCase();

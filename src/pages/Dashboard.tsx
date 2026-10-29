@@ -13,6 +13,8 @@ import { ChangeTag, PriceChart } from '../components/live';
 import { useMarketPref } from '../lib/marketPref';
 import { useIndexDefs, useScreener } from '../lib/screener';
 import { HEADLINE, sessionInfo } from '../lib/indices';
+import { horizonMeta, useResearch, type Horizon, type Pick } from '../lib/research';
+import { fmtRange } from '../components/TradeTicket';
 import type { Market, ScreenerRow } from '../types';
 
 const BROAD: Record<Market, string> = { IN: 'nifty50', US: 'dow30' };
@@ -101,6 +103,13 @@ export default function Dashboard() {
     .filter((s) => !s.snapshotMismatch && ['Strong Buy', 'Buy', 'Accumulate'].includes(s.rating))
     .sort((a, b) => change(b.price, b.fairValue) - change(a.price, a.fairValue))
     .slice(0, 6);
+
+  // Model picks, interleaved across horizons so each is represented.
+  const { data: quant } = useResearch(market);
+  const modelPicks: { h: Horizon; p: Pick }[] = [];
+  if (quant && !quant.building) {
+    for (let i = 0; i < 4 && modelPicks.length < 8; i++) (['st', 'lt', 'sw'] as Horizon[]).forEach((h) => quant.picks[h][i] && modelPicks.length < 8 && modelPicks.push({ h, p: quant.picks[h][i] }));
+  }
 
   const { views } = useIpoViews();
   const order = ['Open', 'Upcoming', 'Closed', 'Listed'];
@@ -270,9 +279,35 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Research picks */}
+        {/* High-conviction picks from the quant model */}
+        {modelPicks.length > 0 && (
+          <div className="card col-span-12">
+            <CardHead title="High-conviction picks" sub={`top-ranked of ${quant!.universe.toLocaleString('en-IN')} stocks · ${quant!.regime.state === 'unknown' ? '' : quant!.regime.state.replace('-', ' ')} market`} right={<Link to="/picks" className={link}>All picks <ArrowRight size={13} /></Link>} />
+            <div className="overflow-x-auto">
+              <table className="table-base">
+                <thead><tr><th>Stock</th><th>Horizon</th><th className="hidden md:table-cell">Sector</th><th className="!text-right">Price</th><th className="!text-right">Buy at</th><th className="!text-right">Target</th><th className="hidden !text-right sm:table-cell">Stop</th><th className="hidden !text-right lg:table-cell">R:R</th></tr></thead>
+                <tbody>
+                  {modelPicks.map(({ h, p }) => (
+                    <tr key={h + p.symbol} className="cursor-pointer transition-colors hover:bg-muted" onClick={() => nav(`/stocks/${market}/${encodeURIComponent(p.symbol)}`)}>
+                      <td><Link to={`/stocks/${market}/${encodeURIComponent(p.symbol)}`} className="tk block hover:text-brand">{p.symbol}</Link><span className="block max-w-[12rem] truncate text-[0.78125rem] text-sub">{p.name}</span></td>
+                      <td><Badge tone="up">{horizonMeta[h].label}</Badge><span className="mt-0.5 block text-[0.75rem] text-sub">{p.plan.type ?? p.plan.horizon}</span></td>
+                      <td className="hidden max-w-[10rem] truncate text-fg2 md:table-cell">{p.sector ?? '—'}</td>
+                      <td className="num text-right">{p.price != null ? fmtPrice(p.price, market) : '—'}</td>
+                      <td className="num text-right">{fmtRange(p.plan.entry[0], p.plan.entry[1], market)}</td>
+                      <td className="num text-right text-up">{fmtPrice(p.plan.target, market)}</td>
+                      <td className="num hidden text-right text-down sm:table-cell">{fmtPrice(p.plan.stop, market)}</td>
+                      <td className="num hidden text-right lg:table-cell">{p.plan.rr.toFixed(1)}×</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Written analyst reports */}
         <div className="card col-span-12">
-          <CardHead title="Research picks" sub="positive ratings, ranked by upside to our fair value" right={<Link to="/stocks" className={link}>All stocks <ArrowRight size={13} /></Link>} />
+          <CardHead title="Analyst reports" sub="written research with positive ratings, ranked by upside to fair value" right={<Link to="/stocks?signal=reports" className={link}>All reports <ArrowRight size={13} /></Link>} />
           <div className="overflow-x-auto">
             <table className="table-base">
               <thead><tr><th>Stock</th><th className="hidden md:table-cell">Sector</th><th className="!text-right">Price</th><th className="!text-right">Day</th><th className="hidden !text-right sm:table-cell">Fair value</th><th className="!text-right">Upside</th><th className="hidden !text-right lg:table-cell">Score</th><th className="!text-right">Our view</th></tr></thead>

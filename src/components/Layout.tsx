@@ -1,7 +1,7 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { Fragment, useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { BarChart3, LineChart, Moon, Rocket, Search, SlidersHorizontal, Sun, Target } from 'lucide-react';
+import { BarChart3, LineChart, Moon, Rocket, Search, SlidersHorizontal, Star, Sun, Target } from 'lucide-react';
 import { useTheme } from '../lib/theme';
 import { useMarketPref } from '../lib/marketPref';
 import { useQuotes } from '../lib/live';
@@ -10,11 +10,12 @@ import { pct } from '../lib/format';
 import { marketTabs } from './Flag';
 import CommandPalette from './CommandPalette';
 
-// `mobile` is the shorter label used in the bottom tab bar.
-const nav: { to: string; label: string; mobile?: string; icon: typeof Rocket; end?: boolean }[] = [
+// `mobile` is the shorter label used in the bottom tab bar; `desktopOnly` items stay out of it (five tabs max).
+const nav: { to: string; label: string; mobile?: string; icon: typeof Rocket; end?: boolean; desktopOnly?: boolean }[] = [
   { to: '/', label: 'Overview', icon: LineChart, end: true },
+  { to: '/picks', label: 'Picks', icon: Star },
   { to: '/stocks', label: 'Stocks', icon: BarChart3 },
-  { to: '/screener', label: 'Screener', icon: SlidersHorizontal },
+  { to: '/screener', label: 'Screener', icon: SlidersHorizontal, desktopOnly: true },
   { to: '/ipo', label: 'IPO desk', icon: Rocket },
   { to: '/weekly-targets', label: 'Weekly targets', mobile: 'Targets', icon: Target },
 ];
@@ -146,7 +147,7 @@ export default function Layout() {
       </footer>
 
       <nav className="fixed inset-x-3 bottom-3 z-40 grid h-[62px] grid-cols-5 rounded-2xl bg-fg p-1.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.5)] md:hidden" aria-label="Primary mobile">
-        {nav.map(({ to, label, mobile, icon: Icon, end }) => (
+        {nav.filter((n) => !n.desktopOnly).map(({ to, label, mobile, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('flex flex-col items-center justify-center gap-0.5 rounded-xl text-[0.6875rem] font-medium', isActive ? 'bg-surface/15 text-surface' : 'text-surface/60')}>
             <Icon size={19} />
             {mobile ?? (label === 'IPO desk' ? 'IPOs' : label)}

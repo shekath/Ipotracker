@@ -11,6 +11,8 @@ import { change, finUnit, fmtDate, fmtFin, fmtMcap, fmtPrice, pct } from '../lib
 import { overallScore, ratingTone, stockPillars } from '../lib/scoring';
 import type { Impact, Stock } from '../types';
 import NotFound from './NotFound';
+import QuantStock from './QuantStock';
+import { horizonMeta, useResearchStock } from '../lib/research';
 import { stockId, useLiveStocks, type LiveStock } from '../lib/live';
 import { ChangeTag, LiveDot, PriceChart, timeAgo } from '../components/live';
 
@@ -40,8 +42,10 @@ function shortThesis(t: string) {
 
 export default function StockDetail() {
   const { market, symbol } = useParams();
-  const s = findStock(market, symbol ? decodeURIComponent(symbol) : undefined);
-  if (!s) return <NotFound />;
+  const sym = symbol ? decodeURIComponent(symbol) : undefined;
+  const s = findStock(market, sym);
+  // Stocks without a written report get the quantitative research page.
+  if (!s) return market === 'IN' || market === 'US' ? <QuantStock key={market + sym} market={market} symbol={(sym ?? '').toUpperCase()} /> : <NotFound />;
   return <StockView key={s.market + s.symbol} s={s} />;
 }
 
@@ -329,6 +333,8 @@ function StockView({ s: base }: { s: Stock }) {
         </div>
       </div>
 
+      <QuantCard market={s.market} symbol={s.symbol} />
+
       {/* Why own / risks */}
       <div className="card mt-4 grid md:grid-cols-2">
         <div className="p-4 sm:p-5">
@@ -380,6 +386,28 @@ function StockView({ s: base }: { s: Stock }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** The quant model's view of a stock that also has a written report. */
+function QuantCard({ market, symbol }: { market: 'IN' | 'US'; symbol: string }) {
+  const { row } = useResearchStock(market, symbol);
+  if (!row) return null;
+  const picks = Object.keys(row.picks ?? {}) as ('st' | 'lt' | 'sw')[];
+  return (
+    <div className="card mt-4">
+      <CardHead title="Quant model" sub="factor ranks vs. the whole market" right={<Link to="/picks" className="text-[0.84375rem] font-medium text-brand hover:underline">All picks</Link>} />
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-4 text-sm sm:px-5">
+        <span>Long-term rank <b className="num">{row.lt ?? '—'}</b></span>
+        <span>Short-term rank <b className="num">{row.st ?? '—'}</b></span>
+        {(['quality', 'growth', 'value', 'momentum', 'trend'] as const).map((k) => (
+          <span key={k} className="text-fg2">{k[0].toUpperCase() + k.slice(1)} <b className="num text-fg">{row.F[k] ?? '—'}</b></span>
+        ))}
+        <span className="ml-auto flex gap-1.5">
+          {picks.length ? picks.map((k) => <Badge key={k} tone="up">{horizonMeta[k].label} pick</Badge>) : <span className="text-[0.8125rem] text-sub">No high-conviction signal from the model right now</span>}
+        </span>
+      </div>
     </div>
   );
 }

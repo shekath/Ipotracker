@@ -7,7 +7,7 @@ cat > "$TMP/config.local.php" <<PHP
 <?php return [
   'data_dir' => '$TMP/data',
   'cron_token' => 'secret',
-  'upstream' => ['yahoo' => ['http://127.0.0.1:8099'], 'yahoo_cookie' => 'http://127.0.0.1:8099/fc', 'niftyindices' => 'http://127.0.0.1:8099', 'nse' => 'http://127.0.0.1:8099', 'twelvedata' => 'http://127.0.0.1:8099'],
+  'upstream' => ['yahoo' => ['http://127.0.0.1:8099'], 'yahoo_cookie' => 'http://127.0.0.1:8099/fc', 'niftyindices' => 'http://127.0.0.1:8099', 'nse' => 'http://127.0.0.1:8099', 'twelvedata' => 'http://127.0.0.1:8099', 'sp500_csv' => 'http://127.0.0.1:8099/sp500.csv', 'ndx_page' => 'http://127.0.0.1:8099/ndx'],
   'gmp_sources' => [['name' => 'Mock GMP', 'url' => 'http://127.0.0.1:8099/gmp.html']],
 ];
 PHP
@@ -116,4 +116,23 @@ echo "ok weekly"
 
 curl -s "http://127.0.0.1:8098/api/health.php" | j '$d["dataDirWritable"]' | grep -q true || fail "health"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/lib/http.php")" != "500" ] || true
+# Quant research: universe, coverage gate, picks and the per-stock endpoint.
+[ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/research.php?market=IN")" = "503" ] || fail "research before first run"
+RR=$(php public/api/cron/update-research.php IN 1000)
+[ "$(echo "$RR" | j '$d[0]["universe"]')" = "124" ] || fail "research universe (Nifty Total Market): $RR"
+[ "$(echo "$RR" | j '$d[0]["building"]')" = "false" ] || fail "research coverage: $RR"
+R=$(curl -s "http://127.0.0.1:8098/api/research.php?market=IN")
+[ "$(echo "$R" | j 'count($d["rows"])')" = "124" ] || fail "research rows"
+[ "$(echo "$R" | j '$d["rows"][0]["cap"]')" = '"Large"' ] || fail "cap bucket"
+[ "$(echo "$R" | j 'in_array("Nifty 50", array_merge(...array_column($d["rows"], "idx")))')" = "true" ] || fail "index tags"
+[ "$(echo "$R" | j 'count($d["picks"]["lt"]) + count($d["picks"]["st"]) <= 24')" = "true" ] || fail "pick cap"
+[ "$(echo "$R" | j 'array_sum(array_map(fn($p) => $p["plan"]["stop"] < $p["plan"]["entry"][0] && $p["plan"]["target"] > $p["plan"]["entry"][1] ? 0 : 1, array_merge($d["picks"]["lt"], $d["picks"]["st"])))')" = "0" ] || fail "plan levels ordered"
+[ "$(echo "$R" | j '$d["swingPool"]["Pullback"]["n"] > 0')" = "true" ] || fail "swing backtest pool"
+S=$(curl -s "http://127.0.0.1:8098/api/research.php?market=IN&symbol=RELIANCE")
+[ "$(echo "$S" | j 'isset($d["row"]["tech"]["sma200"], $d["row"]["fund"]["roe"])')" = "true" ] || fail "research stock detail: $S"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/research.php?market=IN&symbol=NOPE")" = "404" ] || fail "unknown research symbol"
+U=$(php public/api/cron/update-research.php US 1000)
+[ "$(echo "$U" | j '$d[0]["universe"] > 500')" = "true" ] || fail "US universe (S&P 500 + Nasdaq-100): $U"
+echo "ok research"
+
 echo "ALL BACKEND TESTS PASSED"
