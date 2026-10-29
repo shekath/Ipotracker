@@ -829,11 +829,16 @@ function research_run(string $mkt, ?int $batch = null): array
     // Rankings are only meaningful once most of the universe has data: hold picks back until then.
     $building = $withHist < 0.7 * count($rows);
     if ($building) $picks = ['lt' => [], 'st' => [], 'sw' => []];
-    // Strongest first, at most 12 per horizon: concentration over breadth.
+    // Strongest first, at most 12 per horizon and cap size: concentration over breadth,
+    // while a size filter on the picks page still finds the best small caps.
     $order = ['lt' => fn($p) => $p['plan']['score'], 'st' => fn($p) => $p['plan']['score'], 'sw' => fn($p) => $p['plan']['own']['avgR'] * 100 + $p['plan']['own']['win'] * 10];
     foreach ($picks as $h => &$list) {
         usort($list, fn($a, $b) => $order[$h]($b) <=> $order[$h]($a));
-        $list = array_slice($list, 0, (int) cfg('research_max_picks', 12));
+        $per = [];
+        $list = array_values(array_filter($list, function ($p) use (&$per) {
+            $c = $p['cap'] ?? '';
+            return ($per[$c] = ($per[$c] ?? 0) + 1) <= (int) cfg('research_max_picks', 12);
+        }));
     }
     unset($list);
     write_json(data_path("research-$mkt.json"), $meta + ['building' => $building, 'picks' => $picks, 'rows' => $table]);
