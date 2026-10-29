@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Info, Radio } from 'lucide-react';
 import clsx from 'clsx';
 import { Badge, Bar, BulletList, ScoreRing, Segmented, scoreTone } from '../components/ui';
@@ -103,7 +103,16 @@ export default function Picks() {
   const [market, setMarket] = useMarketPref();
   const { data, error, loading } = useResearch(market);
   const [h, setH] = useState<Horizon>('st');
-  const list = data?.picks[h] ?? [];
+  const [params, setParams] = useSearchParams();
+  const cap = params.get('cap') ?? 'All';
+  const setCap = (c: string) => setParams(c === 'All' ? {} : { cap: c }, { replace: true });
+  const caps = useMemo(() => ['Mega', 'Large', 'Mid', 'Small', 'Micro'].filter((c) => data?.rows.some((r) => r.cap === c)), [data]);
+  // The server keeps the 12 strongest per cap size; "All sizes" shows the 12 strongest overall.
+  const of = (k: Horizon) => {
+    const all = data?.picks[k] ?? [];
+    return cap === 'All' ? all.slice(0, 12) : all.filter((p) => p.cap === cap).slice(0, 12);
+  };
+  const list = of(h);
 
   return (
     <div className="space-y-6">
@@ -114,7 +123,7 @@ export default function Picks() {
             Every {market === 'IN' ? 'Indian stock in the Nifty Total Market' : 'S&P 500 and Nasdaq-100 stock'} is scored daily on fundamentals and technicals. Only the few that clear every gate appear here, with an entry zone, target and stop loss.
           </p>
         </div>
-        <Segmented value={market} onChange={setMarket} options={marketTabs} />
+        <Segmented value={market} onChange={(m) => { setMarket(m); setCap('All'); }} options={marketTabs} />
       </div>
 
       {loading && !data ? (
@@ -131,9 +140,16 @@ export default function Picks() {
         <>
           <RegimeStrip data={data} />
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Segmented value={h} onChange={setH} options={order.map((k) => ({ value: k, label: `${horizonMeta[k].label} (${data.picks[k].length})` }))} />
-            <p className="text-sm text-sub">{horizonMeta[h].blurb}</p>
+            <Segmented value={h} onChange={setH} options={order.map((k) => ({ value: k, label: `${horizonMeta[k].label} (${of(k).length})` }))} />
+            <label className="flex items-center gap-2 text-sm">
+              <span className="label">Size</span>
+              <select className={clsx('input w-auto py-2', cap !== 'All' && 'border-brand ring-1 ring-brand/30')} value={cap} onChange={(e) => setCap(e.target.value)} aria-label="Filter picks by market cap">
+                <option value="All">All sizes</option>
+                {caps.map((c) => <option key={c} value={c}>{c} cap ({(data.picks[h] ?? []).filter((p) => p.cap === c).length})</option>)}
+              </select>
+            </label>
           </div>
+          <p className="-mt-2 text-sm text-sub">{horizonMeta[h].blurb}</p>
           {data.building ? (
             <div className="card card-pad text-sm text-sub">
               <span className="font-semibold text-fg">Still building.</span> {data.coverage.history} of {data.universe} stocks have been analysed so far. Picks are held back until at least 70% are in, so the ranking is fair. Check back within the hour.
@@ -142,7 +158,7 @@ export default function Picks() {
             <div className="space-y-4">{list.map((p, i) => <PickCard key={p.symbol} p={p} h={h} market={market} rank={i + 1} />)}</div>
           ) : (
             <div className="card card-pad text-sm text-sub">
-              <span className="font-semibold text-fg">No {horizonMeta[h].label.toLowerCase()} pick clears the bar today.</span> That is deliberate: a stock needs a top-decile rank, agreement across factors and no red flags. When nothing qualifies, the right trade is no trade.
+              <span className="font-semibold text-fg">No {cap === 'All' ? '' : `${cap.toLowerCase()} cap `}{horizonMeta[h].label.toLowerCase()} pick clears the bar today.</span>{cap !== 'All' && <> <button className="font-medium text-brand hover:underline" onClick={() => setCap('All')}>Show all sizes</button>.</>} That is deliberate: a stock needs a top-decile rank, agreement across factors and no red flags. When nothing qualifies, the right trade is no trade.
             </div>
           )}
           <div className="card card-pad">

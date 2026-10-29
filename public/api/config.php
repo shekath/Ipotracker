@@ -48,7 +48,7 @@ $config = [
     'research_concurrency' => 8,     // parallel Yahoo requests; keep low to avoid rate limits
     'research_history_ttl' => 64800, // daily price history is refetched after 18 hours
     'research_fund_ttl' => 259200,   // fundamentals and analyst estimates after 3 days
-    'research_max_picks' => 12,      // high-conviction ideas shown per horizon and market
+    'research_max_picks' => 12,      // high-conviction ideas kept per horizon, market and cap size
 
     'upstream' => [
         'yahoo' => ['https://query1.finance.yahoo.com', 'https://query2.finance.yahoo.com'],
