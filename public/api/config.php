@@ -44,6 +44,7 @@ $config = [
 
     // Quant research (cron/update-research.php)
     'research_batch' => 200,         // stale symbols refreshed per run and market (history + fundamentals)
+    'research_web_batch' => 80,      // the same, for a run started by a visit (see api/research.php)
     'research_concurrency' => 8,     // parallel Yahoo requests; keep low to avoid rate limits
     'research_history_ttl' => 64800, // daily price history is refetched after 18 hours
     'research_fund_ttl' => 259200,   // fundamentals and analyst estimates after 3 days
