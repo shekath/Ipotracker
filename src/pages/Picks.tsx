@@ -4,12 +4,13 @@ import { Info, Radio } from 'lucide-react';
 import clsx from 'clsx';
 import { Badge, Bar, BulletList, ScoreRing, Segmented, scoreTone } from '../components/ui';
 import { TradeLadder } from '../components/charts';
-import { timeAgo } from '../components/live';
+import { ChangeTag, LiveDot, timeAgo } from '../components/live';
+import { useQuotes, type FeedStatus } from '../lib/live';
 import { marketTabs } from '../components/Flag';
 import { useMarketPref } from '../lib/marketPref';
 import { factorLabel, horizonMeta, reasons, risks, useResearch, type Factors, type Horizon, type Pick, type ResearchData } from '../lib/research';
-import { pct } from '../lib/format';
-import type { Market } from '../types';
+import { fmtPrice, pct } from '../lib/format';
+import type { LiveQuote, Market } from '../types';
 
 const order: Horizon[] = ['st', 'lt', 'sw'];
 
@@ -43,10 +44,12 @@ export function FactorList({ F }: { F: Factors }) {
   );
 }
 
-function PickCard({ p, h, market, rank }: { p: Pick; h: Horizon; market: Market; rank: number }) {
+function PickCard({ p, h, market, rank, quote, status }: { p: Pick; h: Horizon; market: Market; rank: number; quote?: LiveQuote; status: FeedStatus }) {
   const cur = market === 'IN' ? '₹' : '$';
   const plan = p.plan;
-  const price = p.price ?? (plan.entry[0] + plan.entry[1]) / 2;
+  // Live last traded price when the feed has it, else the research snapshot.
+  const price = quote?.price ?? p.price ?? (plan.entry[0] + plan.entry[1]) / 2;
+  const chg = quote?.changePct ?? p.chg;
   const why = reasons(p, h, cur);
   return (
     <article className="card card-pad">
@@ -62,6 +65,12 @@ function PickCard({ p, h, market, rank }: { p: Pick; h: Horizon; market: Market;
             <Link to={`/stocks/${market}/${encodeURIComponent(p.symbol)}`} className="hover:text-brand">{p.symbol}</Link>
             <span className="ml-2 text-sm font-normal text-sub">{p.name}</span>
           </h3>
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-xs font-medium uppercase tracking-wider text-sub">LTP</span>
+            <span className="num text-xl font-bold">{fmtPrice(price, market)}</span>
+            {quote ? <ChangeTag q={quote} /> : chg != null && <span className={clsx('num text-sm font-semibold', chg >= 0 ? 'text-up' : 'text-down')}>{chg >= 0 ? '▲' : '▼'} {pct(chg, 2)}</span>}
+            <LiveDot status={status} quote={quote} className="self-center" />
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {plan.type && <Badge tone="brand">{plan.type}</Badge>}
@@ -92,7 +101,7 @@ function PickCard({ p, h, market, rank }: { p: Pick; h: Horizon; market: Market;
       </div>
 
       <details className="mt-4 border-t border-line pt-4">
-        <summary className="cursor-pointer text-sm font-medium text-sub hover:text-fg">Factor scores {p.chg != null && <span className={clsx('num ml-2', p.chg >= 0 ? 'text-up' : 'text-down')}>Today {pct(p.chg, 2)}</span>}</summary>
+        <summary className="cursor-pointer text-sm font-medium text-sub hover:text-fg">Factor scores</summary>
         <div className="mt-3 max-w-md"><FactorList F={p.F} /></div>
       </details>
     </article>
@@ -113,6 +122,8 @@ export default function Picks() {
     return cap === 'All' ? all.slice(0, 12) : all.filter((p) => p.cap === cap).slice(0, 12);
   };
   const list = of(h);
+  const ids = list.map((p) => `${market}:${p.symbol}`).join(',');
+  const { quotes, status } = useQuotes(useMemo(() => (ids ? ids.split(',') : []), [ids]));
 
   return (
     <div className="space-y-6">
@@ -155,7 +166,7 @@ export default function Picks() {
               <span className="font-semibold text-fg">Still building.</span> {data.coverage.history} of {data.universe} stocks have been analysed so far. Picks are held back until at least 70% are in, so the ranking is fair. Check back within the hour.
             </div>
           ) : list.length ? (
-            <div className="space-y-4">{list.map((p, i) => <PickCard key={p.symbol} p={p} h={h} market={market} rank={i + 1} />)}</div>
+            <div className="space-y-4">{list.map((p, i) => <PickCard key={p.symbol} p={p} h={h} market={market} rank={i + 1} quote={quotes[`${market}:${p.symbol}`]} status={status} />)}</div>
           ) : (
             <div className="card card-pad text-sm text-sub">
               <span className="font-semibold text-fg">No {cap === 'All' ? '' : `${cap.toLowerCase()} cap `}{horizonMeta[h].label.toLowerCase()} pick clears the bar today.</span>{cap !== 'All' && <> <button className="font-medium text-brand hover:underline" onClick={() => setCap('All')}>Show all sizes</button>.</>} That is deliberate: a stock needs a top-decile rank, agreement across factors and no red flags. When nothing qualifies, the right trade is no trade.

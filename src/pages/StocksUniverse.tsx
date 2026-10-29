@@ -72,7 +72,7 @@ function Score({ v }: { v: number | null }) {
   if (v == null) return <span className="text-sub">—</span>;
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="h-1.5 w-12 overflow-hidden rounded-full bg-muted"><i className={clsx('block h-full rounded-full', v >= 80 ? 'bg-up' : v >= 50 ? 'bg-brand' : 'bg-sub/50')} style={{ width: `${v}%` }} /></span>
+      <span className="hidden h-1.5 w-10 overflow-hidden rounded-full bg-muted xl:block"><i className={clsx('block h-full rounded-full', v >= 80 ? 'bg-up' : v >= 50 ? 'bg-brand' : 'bg-sub/50')} style={{ width: `${v}%` }} /></span>
       <span className="num w-6 text-right">{v}</span>
     </span>
   );
@@ -138,7 +138,7 @@ export default function UniverseView() {
   const shown = filtered.slice((cur - 1) * PAGE, cur * PAGE);
   const sortBtn = (k: SortKey, label: string) => (
     <button
-      className={clsx('inline-flex items-center gap-1 uppercase tracking-wider hover:text-fg', sort === k && 'text-fg')}
+      className={clsx('inline-flex items-center gap-1 text-right uppercase tracking-wider hover:text-fg', sort === k && 'text-fg')}
       onClick={() => {
         const next = new URLSearchParams(params);
         const nd = sort === k ? (dir === -1 ? 'asc' : null) : k === 'name' || k === 'pe' ? 'asc' : null;
@@ -199,19 +199,18 @@ export default function UniverseView() {
         <EmptyState title="No stocks match" body="Try clearing a filter or searching for something else." action={<button className="btn-ghost border border-line" onClick={() => setParams({})}>Reset filters</button>} />
       ) : (
         <div className="card overflow-x-auto">
-          <table className="table-base">
+          <table className="table-base [&_td]:px-3 [&_th]:px-3">
             <thead>
               <tr>
                 <th>#</th>
                 <th>{sortBtn('name', 'Company')}</th>
-                <th className="hidden lg:table-cell">Sector</th>
-                <th className="hidden md:table-cell">Size</th>
+                <th className="hidden lg:table-cell">Sector · Size</th>
                 <th className="!text-right">Price</th>
                 <th className="!text-right">{sortBtn('chg', 'Day')}</th>
-                <th className="hidden !text-right md:table-cell">{sortBtn('mcap', 'Mcap')}</th>
+                <th className="hidden !text-right lg:table-cell">{sortBtn('mcap', 'Mcap')}</th>
                 <th className="hidden !text-right xl:table-cell">{sortBtn('pe', 'P/E')}</th>
-                <th className="hidden !text-right sm:table-cell">{sortBtn('lt', 'Long term')}</th>
-                <th className="hidden !text-right sm:table-cell">{sortBtn('st', 'Short term')}</th>
+                <th className="hidden !whitespace-normal !text-right sm:table-cell xl:!whitespace-nowrap">{sortBtn('lt', 'Long term')}</th>
+                <th className="hidden !whitespace-normal !text-right sm:table-cell xl:!whitespace-nowrap">{sortBtn('st', 'Short term')}</th>
                 <th className="!text-right">Signals</th>
               </tr>
             </thead>
@@ -225,13 +224,15 @@ export default function UniverseView() {
                     <td>
                       <Link to={to} className="font-semibold hover:text-brand" onClick={(e) => e.stopPropagation()}>{r.symbol}</Link>
                       {rep && <Badge tone={ratingTone[rep.rating]} className="ml-2 !px-2 !text-[10px]">Report · {rep.rating}</Badge>}
-                      <span className="block max-w-[14rem] truncate text-xs text-sub">{r.name}</span>
+                      <span className="block max-w-[10rem] truncate text-xs xl:max-w-[13rem] text-sub" title={r.name}>{r.name}</span>
                     </td>
-                    <td className="hidden max-w-[11rem] truncate text-sub lg:table-cell">{r.sector ?? '—'}</td>
-                    <td className="hidden text-sub md:table-cell">{r.cap ?? '—'}</td>
+                    <td className="hidden lg:table-cell">
+                      <span className="block max-w-[8rem] truncate text-sub xl:max-w-[10rem]" title={r.sector ?? undefined}>{r.sector ?? '—'}</span>
+                      <span className="block text-xs text-sub">{r.cap ? `${r.cap} cap` : '—'}</span>
+                    </td>
                     <td className="num text-right font-medium">{r.price != null ? fmtPrice(r.price, market) : '—'}</td>
                     <td className={clsx('num text-right font-semibold', r.chg == null ? 'text-sub' : r.chg >= 0 ? 'text-up' : 'text-down')}>{r.chg == null ? '—' : pct(r.chg, 2)}</td>
-                    <td className="num hidden text-right text-sub md:table-cell">{fmtMcapRaw(r.mcap, market)}</td>
+                    <td className="num hidden text-right text-sub lg:table-cell">{fmtMcapRaw(r.mcap, market)}</td>
                     <td className="num hidden text-right xl:table-cell">{r.pe != null && r.pe > 0 ? r.pe.toFixed(1) : '—'}</td>
                     <td className="hidden text-right sm:table-cell"><Score v={r.lt} /></td>
                     <td className="hidden text-right sm:table-cell"><Score v={r.st} /></td>
