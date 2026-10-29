@@ -14,7 +14,9 @@ const steps = [
   ['header Overview', 'header nav >> text=Overview', 'Market overview'],
   ['research pick', 'main a[href*="#/stocks/IN/"] >> nth=0', null],
   ['logo', 'header a >> nth=0', 'Market overview'],
-  ['All stocks link', 'text=All stocks', 'Stock research'],
+  ['header Picks', 'header nav >> text=Picks', 'High-conviction picks'],
+  ['pick card', 'main a[href*="#/stocks/IN/"] >> nth=0', null],
+  ['crumb to Stocks', 'main >> text=Stocks >> nth=0', 'Stock research'],
   ['stock row', 'main a[href*="#/stocks/IN/"] >> nth=0', null],
   ['header Weekly targets', 'header nav >> a[href="#/weekly-targets"]', 'Weekly index targets'],
 ];
