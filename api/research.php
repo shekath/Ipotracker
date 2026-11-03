@@ -2,6 +2,7 @@
 /**
  * GET ?market=IN            -> research table + high-conviction picks
  * GET ?market=IN&symbol=TCS -> every feature for one stock
+ * GET ?market=IN&track=1    -> track record of past short- and long-term picks
  * Data is produced by cron/update-research.php, or by a stale visit (below).
  */
 declare(strict_types=1);
@@ -10,6 +11,12 @@ require __DIR__ . '/lib/bootstrap.php';
 $mkt = strtoupper((string) ($_GET['market'] ?? ''));
 if (!in_array($mkt, ['IN', 'US'], true)) json_out(['error' => 'Pass market=IN or market=US'], 400);
 $sym = strtoupper(trim((string) ($_GET['symbol'] ?? '')));
+
+// Track record of past picks: newest first.
+if (isset($_GET['track'])) {
+    $t = read_json(data_path("track-$mkt.json"), []);
+    json_out(['asOf' => $t['asOf'] ?? null, 'entries' => array_reverse($t['entries'] ?? [])], 200, 300);
+}
 
 if ($sym !== '') {
     if (!preg_match('/^[A-Z0-9&.\-]{1,20}$/', $sym)) json_out(['error' => 'Bad symbol'], 400);
