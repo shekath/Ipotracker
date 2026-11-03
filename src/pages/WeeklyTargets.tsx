@@ -14,7 +14,7 @@ const STEP_LABEL: Record<Divisor, string> = { 4: 'Range ÷ 4', 2: 'Range ÷ 2', 
 const C = { live: '#3b82f6', up: 'rgb(var(--up))', down: 'rgb(var(--down))', pivot: 'rgb(var(--warn))', fg: 'rgb(var(--fg))', sub: 'rgb(var(--sub))', surface: 'rgb(var(--surface))', line: 'rgb(var(--line))', brand: 'rgb(var(--brand))' };
 
 type Inputs = PrevWeek & { price: number; curClose: number; wkHigh: number; wkLow: number };
-/** Where the price used for the verdict came from: last week's close (default), the current close, or a what-if. */
+/** Where the price used for the verdict came from: the current close (default), last week's close, or a what-if. */
 type PriceSrc = 'prev' | 'current' | 'whatif';
 type Edits = Partial<Record<keyof Inputs, number>>;
 
@@ -64,20 +64,27 @@ export default function WeeklyTargets() {
   useEffect(() => save('ml-wt-div', div), [div]);
 
   const item = feed?.[index];
+  const def = defaultPrice(item);
+  // The latest close from the feed (the live price in market hours) is the default price; Reset goes to last week's close.
+  const feedClose = item?.current?.price ?? item?.prevDay?.close ?? NaN;
   const loaded: Partial<Inputs> = item
-    ? { ...item.prev, price: defaultPrice(item), curClose: item.current?.price ?? item.prevDay?.close ?? NaN, wkHigh: item.current?.high ?? NaN, wkLow: item.current?.low ?? NaN }
+    ? { ...item.prev, price: Number.isFinite(feedClose) ? feedClose : def, curClose: feedClose, wkHigh: item.current?.high ?? NaN, wkLow: item.current?.low ?? NaN }
     : {};
   const v = { ...loaded, ...(edits[index] ?? {}) } as Inputs;
-  const def = defaultPrice(item);
   const atDef = Number.isFinite(def) && Math.abs(v.price - def) < 0.005;
   const dayClose: DayClose | null = item?.prevDay && Number.isFinite(item.prevDay.close) ? item.prevDay : null;
   const livePx: LivePx | null = live && item?.current?.marketOpen && Number.isFinite(item.current.price) ? { price: item.current.price!, asOf: item.current.asOf } : null;
   const setField = (f: keyof Inputs, n: number) => setEdits((e) => ({ ...e, [index]: { ...(e[index] ?? {}), [f]: n } }));
   const [srcs, setSrcs] = useState<Partial<Record<IndexKey, PriceSrc>>>({});
-  const src: PriceSrc = edits[index]?.price === undefined ? 'prev' : srcs[index] ?? 'whatif';
+  const src: PriceSrc = edits[index]?.price === undefined ? (Number.isFinite(feedClose) ? 'current' : 'prev') : srcs[index] ?? 'whatif';
   const usePrice = (p: number, from: PriceSrc) => { setField('price', Math.round(p * 100) / 100); setSrcs((m) => ({ ...m, [index]: from })); };
-  const resetPrice = () => { setEdits((e) => { const cur = { ...(e[index] ?? {}) }; delete cur.price; return { ...e, [index]: cur }; }); setSrcs((m) => ({ ...m, [index]: 'prev' })); };
-  const resetAll = () => { setEdits((e) => ({ ...e, [index]: {} })); setSrcs((m) => ({ ...m, [index]: 'prev' })); };
+  const resetPrice = () => usePrice(def, 'prev');
+  // Back to following the feed's current close.
+  const followFeed = () => { setEdits((e) => { const cur = { ...(e[index] ?? {}) }; delete cur.price; return { ...e, [index]: cur }; }); setSrcs((m) => ({ ...m, [index]: 'current' })); };
+  const resetAll = () => { setEdits((e) => ({ ...e, [index]: {} })); setSrcs((m) => ({ ...m, [index]: 'current' })); };
+  const curWhen = item?.current?.marketOpen && item.current.asOf
+    ? `Live price at ${new Date(item.current.asOf).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })} IST`
+    : item?.prevDay?.date ? `Close on ${dayLabel(item.prevDay.date)}` : 'Latest close';
   // Typing the current close in Edit inputs also makes it the price the verdict uses.
   const onPanelField = (f: keyof Inputs, n: number) => { setField(f, n); if (f === 'curClose' && Number.isFinite(n)) usePrice(n, 'current'); };
 
@@ -138,7 +145,7 @@ export default function WeeklyTargets() {
 
       {calc?.r && (
         <>
-          <Hero name={INDEX_NAMES[index]} r={calc.r} s={calc.s} price={v.price} def={def} src={src} weekLabel={item?.prevWeekLabel ?? ''} curClose={v.curClose} onPrice={setPrice} onUseCurrent={() => usePrice(v.curClose, 'current')} onReset={resetPrice} />
+          <Hero name={INDEX_NAMES[index]} r={calc.r} s={calc.s} price={v.price} def={def} src={src} weekLabel={item?.prevWeekLabel ?? ''} curClose={v.curClose} curWhen={edits[index]?.curClose === undefined ? curWhen : 'From Edit inputs'} onPrice={setPrice} onUseCurrent={() => (edits[index]?.curClose === undefined ? followFeed() : usePrice(v.curClose, 'current'))} onReset={resetPrice} />
 
           <section className="card card-pad">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -215,8 +222,8 @@ function Fx({ name, f, v, hot }: { name: string; f: string; v: string; hot?: boo
 }
 
 // ---------- Hero ----------
-function Hero({ name, r, s, price, def, src, weekLabel, curClose, onPrice, onUseCurrent, onReset }: {
-  name: string; r: WeeklyResult; s: Signal | null; price: number; def: number; src: PriceSrc; weekLabel: string; curClose: number;
+function Hero({ name, r, s, price, def, src, weekLabel, curClose, curWhen, onPrice, onUseCurrent, onReset }: {
+  name: string; r: WeeklyResult; s: Signal | null; price: number; def: number; src: PriceSrc; weekLabel: string; curClose: number; curWhen: string;
   onPrice: (p: number) => void; onUseCurrent: () => void; onReset: () => void;
 }) {
   const [text, setText] = useState<string | null>(null);
@@ -250,9 +257,9 @@ function Hero({ name, r, s, price, def, src, weekLabel, curClose, onPrice, onUse
         </div>
         <span className="text-xs text-sub">
           {isDef
-            ? `Last week's close${weekLabel ? ` (${weekLabel})` : ''}. Enter the current close in Edit inputs, or type or drag to try a price.`
+            ? `Last week's close${weekLabel ? ` (${weekLabel})` : ''}. Use current close to go back to today's price, or type or drag to try a price.`
             : src === 'current'
-              ? "This week's current close, from Edit inputs. Reset to go back to last week's close."
+              ? `${curWhen}, updated automatically. Reset to use last week's close.`
               : "Your what-if price. Reset to go back to last week's close."}
         </span>
       </div>
