@@ -44,7 +44,7 @@ export function FactorList({ F }: { F: Factors }) {
   );
 }
 
-function PickCard({ p, h, market, rank, quote, status }: { p: Pick; h: Horizon; market: Market; rank: number; quote?: LiveQuote; status: FeedStatus }) {
+function PickCard({ p, h, market, rank, quote, status, since }: { p: Pick; h: Horizon; market: Market; rank: number; quote?: LiveQuote; status: FeedStatus; since?: TrackEntry }) {
   const cur = market === 'IN' ? '₹' : '$';
   const plan = p.plan;
   // Live last traded price when the feed has it, else the research snapshot.
@@ -71,6 +71,12 @@ function PickCard({ p, h, market, rank, quote, status }: { p: Pick; h: Horizon; 
             {quote ? <ChangeTag q={quote} /> : chg != null && <span className={clsx('num text-sm font-semibold', chg >= 0 ? 'text-up' : 'text-down')}>{chg >= 0 ? '▲' : '▼'} {pct(chg, 2)}</span>}
             <LiveDot status={status} quote={quote} className="self-center" />
           </div>
+          {since && (
+            <p className="mt-1 text-xs text-sub">
+              Recommended since {day(since.at)} at <span className="num">{fmtPrice(since.price, market)}</span> ·{' '}
+              <span className={clsx('num font-semibold', price >= since.price ? 'text-up' : 'text-down')}>{pct((price / since.price - 1) * 100, 1)}</span> since then
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {plan.type && <Badge tone="brand">{plan.type}</Badge>}
@@ -132,9 +138,71 @@ const statusMeta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'do
   open: { label: 'Open', tone: 'brand' },
 };
 
+const KEEP_CLOSED = 3 * 86400; // closed picks stay on the picks page for 3 days, then live on only in the track record
+
+/**
+ * Earlier recommendations: past picks that have left today's list. Open ones keep being tracked against
+ * their target; a stop hit marks the pick Invalid, and closed picks drop off this list after 3 days.
+ */
+function EarlierPicks({ market, h, cap, entries, current }: { market: Market; h: 'st' | 'lt'; cap: string; entries?: TrackEntry[]; current: Pick[] }) {
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [h, cap, market]);
+  const now = Date.now() / 1000;
+  const live = new Set(current.map((p) => p.symbol));
+  const list = (entries ?? []).filter((e) => e.h === h && !(e.status === 'open' && live.has(e.symbol)) && (cap === 'All' || e.cap === cap) && (e.status === 'open' || now - (e.closedAt ?? now) < KEEP_CLOSED));
+  if (!list.length) return null;
+  const PER = 10;
+  const cur = Math.min(page, Math.max(1, Math.ceil(list.length / PER)));
+  const meta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'down' | 'neutral' | 'brand' }> = {
+    open: { label: 'Active', tone: 'brand' },
+    target: { label: 'Target hit', tone: 'up' },
+    stop: { label: 'Invalid', tone: 'down' },
+    expired: { label: 'Expired', tone: 'neutral' },
+  };
+  const note = (e: TrackEntry) => {
+    if (e.status === 'open') return `Still tracking towards ${fmtPrice(e.target, market)}`;
+    const why = e.status === 'stop' ? `Stop loss hit ${day(e.closedAt!)}` : e.status === 'target' ? `Target reached ${day(e.closedAt!)}` : `Window ended ${day(e.closedAt!)}`;
+    const left = Math.max(1, Math.ceil((e.closedAt! + KEEP_CLOSED - now) / 86400));
+    return `${why} · leaves this list in ${left} day${left === 1 ? '' : 's'}`;
+  };
+  return (
+    <section className="card card-pad" aria-labelledby="earlier-title">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="earlier-title" className="text-lg font-semibold">Earlier recommendations</h2>
+        <span className="text-xs text-sub">No longer in today's list · still tracked until target, stop or expiry</span>
+      </div>
+      <ul className="mt-3 divide-y divide-line">
+        {list.slice((cur - 1) * PER, cur * PER).map((e) => {
+          const px = e.exit ?? e.last ?? e.price;
+          const r = (px / e.price - 1) * 100;
+          return (
+            <li key={`${e.symbol}-${e.at}`} className={clsx('grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 py-3', e.status === 'stop' && 'opacity-75')}>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className={clsx('font-semibold hover:text-brand', e.status === 'stop' && 'line-through decoration-down/60')}>{e.symbol}</Link>
+                  <span className="truncate text-sm text-sub">{e.name}</span>
+                  <Badge tone={meta[e.status].tone}>{meta[e.status].label}</Badge>
+                </div>
+                <div className="num mt-1 text-xs text-sub">
+                  {day(e.at)} at {fmtPrice(e.price, market)} · Target {fmtPrice(e.target, market)} · Stop {fmtPrice(e.stop, market)}
+                </div>
+                <div className="mt-0.5 text-xs text-sub">{note(e)}</div>
+              </div>
+              <div className="text-right">
+                <div className={clsx('num font-semibold', r >= 0 ? 'text-up' : 'text-down')}>{pct(r, 1)}</div>
+                <div className="num text-xs text-sub">{e.status === 'open' ? 'now' : 'exit'} {fmtPrice(px, market)}</div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-2"><Pager page={cur} per={PER} total={list.length} noun="earlier picks" label="Earlier recommendations pages" onPage={setPage} /></div>
+    </section>
+  );
+}
+
 /** How every past short- or long-term pick played out: target hit, stop hit, expired or still open. */
-function TrackRecord({ market, h, cap }: { market: Market; h: 'st' | 'lt'; cap: string }) {
-  const { entries, loading } = useTrack(market);
+function TrackRecord({ market, h, cap, entries, loading }: { market: Market; h: 'st' | 'lt'; cap: string; entries?: TrackEntry[]; loading: boolean }) {
   const PER = 10;
   const [page, setPage] = useState(1);
   useEffect(() => setPage(1), [h, cap, market]);
@@ -260,6 +328,8 @@ export default function Picks() {
     return cap === 'All' ? all.slice(0, 12) : all.filter((p) => p.cap === cap).slice(0, 12);
   };
   const list = of(h);
+  const track = useTrack(market);
+  const openSince = (sym: string) => track.entries?.find((e) => e.h === h && e.symbol === sym && e.status === 'open');
   // Ten picks a page; back to the first page whenever the list itself changes.
   const PER = 10;
   const [page, setPage] = useState(1);
@@ -314,7 +384,7 @@ export default function Picks() {
             </div>
           ) : list.length ? (
             <div ref={top} className="scroll-mt-20 space-y-4">
-              {pageList.map((p, i) => <PickCard key={p.symbol} p={p} h={h} market={market} rank={(cur - 1) * PER + i + 1} quote={quotes[`${market}:${p.symbol}`]} status={status} />)}
+              {pageList.map((p, i) => <PickCard key={p.symbol} p={p} h={h} market={market} rank={(cur - 1) * PER + i + 1} quote={quotes[`${market}:${p.symbol}`]} status={status} since={openSince(p.symbol)} />)}
               <Pager page={cur} per={PER} total={list.length} noun="picks" label="Picks pages" onPage={go} />
             </div>
           ) : (
@@ -322,7 +392,8 @@ export default function Picks() {
               <span className="font-semibold text-fg">No {cap === 'All' ? '' : `${cap.toLowerCase()} cap `}{horizonMeta[h].label.toLowerCase()} pick clears the bar today.</span>{cap !== 'All' && <> <button className="font-medium text-brand hover:underline" onClick={() => setCap('All')}>Show all sizes</button>.</>} That is deliberate: a stock needs a top-decile rank, agreement across factors and no red flags. When nothing qualifies, the right trade is no trade.
             </div>
           )}
-          {h !== 'sw' && <TrackRecord market={market} h={h} cap={cap} />}
+          {h !== 'sw' && !data.building && <EarlierPicks market={market} h={h} cap={cap} entries={track.entries} current={data.picks[h] ?? []} />}
+          {h !== 'sw' && <TrackRecord market={market} h={h} cap={cap} entries={track.entries} loading={track.loading} />}
           <div className="card card-pad">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold"><Info size={16} className="text-brand" /> How picks are made</div>
             <ul className="space-y-3 text-sm leading-relaxed">
