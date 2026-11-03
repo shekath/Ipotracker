@@ -108,6 +108,22 @@ function PickCard({ p, h, market, rank, quote, status }: { p: Pick; h: Horizon; 
   );
 }
 
+/** Previous / Next pager with a range count, shared by the picks list and the track record. */
+function Pager({ page, per, total, noun, label, onPage }: { page: number; per: number; total: number; noun: string; label: string; onPage: (n: number) => void }) {
+  const pages = Math.max(1, Math.ceil(total / per));
+  if (pages < 2) return null;
+  return (
+    <nav className="flex flex-wrap items-center justify-between gap-3 text-sm text-sub" aria-label={label}>
+      <span className="num">{(page - 1) * per + 1}–{Math.min(page * per, total)} of {total} {noun}</span>
+      <span className="flex items-center gap-1">
+        <button className="btn-ghost border border-line !px-3 disabled:opacity-40" disabled={page === 1} onClick={() => onPage(page - 1)}><ChevronLeft size={16} /> Previous</button>
+        <span className="num px-2 text-fg">{page} / {pages}</span>
+        <button className="btn-ghost border border-line !px-3 disabled:opacity-40" disabled={page === pages} onClick={() => onPage(page + 1)}>Next <ChevronRight size={16} /></button>
+      </span>
+    </nav>
+  );
+}
+
 const day = (t: number) => new Date(t * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
 const statusMeta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'down' | 'neutral' | 'brand' }> = {
   target: { label: 'Target hit', tone: 'up' },
@@ -119,13 +135,18 @@ const statusMeta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'do
 /** How every past short- or long-term pick played out: target hit, stop hit, expired or still open. */
 function TrackRecord({ market, h, cap }: { market: Market; h: 'st' | 'lt'; cap: string }) {
   const { entries, loading } = useTrack(market);
-  const [more, setMore] = useState(false);
+  const PER = 10;
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [h, cap, market]);
+  const top = useRef<HTMLElement>(null);
   const list = (entries ?? []).filter((e) => e.h === h && (cap === 'All' || e.cap === cap));
   const n = (s: TrackEntry['status']) => list.filter((e) => e.status === s).length;
   const closed = n('target') + n('stop') + n('expired');
   const ret = (e: TrackEntry) => ((e.exit ?? e.last ?? e.price) / e.price - 1) * 100;
   const avgClosed = closed ? list.filter((e) => e.status !== 'open').reduce((a, e) => a + ret(e), 0) / closed : null;
-  const shown = more ? list : list.slice(0, 15);
+  const cur = Math.min(page, Math.max(1, Math.ceil(list.length / PER)));
+  const shown = list.slice((cur - 1) * PER, cur * PER);
+  const go = (n: number) => { setPage(n); top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const when = (e: TrackEntry) => {
     const d = Math.max(0, Math.round(((e.closedAt ?? Date.now() / 1000) - e.at) / 86400));
     if (e.closedAt) return `${day(e.closedAt)} · after ${d} day${d === 1 ? '' : 's'}`;
@@ -134,7 +155,7 @@ function TrackRecord({ market, h, cap }: { market: Market; h: 'st' | 'lt'; cap: 
   const label = horizonMeta[h].label.toLowerCase();
 
   return (
-    <section className="card card-pad" aria-labelledby="track-title">
+    <section ref={top} className="card card-pad scroll-mt-20" aria-labelledby="track-title">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="track-title" className="text-lg font-semibold">Track record · {horizonMeta[h].label}</h2>
         <span className="text-xs text-sub">Every {label} pick since tracking began{cap !== 'All' ? ` · ${cap} cap` : ''}</span>
@@ -217,9 +238,7 @@ function TrackRecord({ market, h, cap }: { market: Market; h: 'st' | 'lt'; cap: 
               </tbody>
             </table>
           </div>
-          {list.length > 15 && (
-            <button className="mt-3 text-sm font-medium text-brand hover:underline" onClick={() => setMore((m) => !m)}>{more ? 'Show fewer' : `Show all ${list.length}`}</button>
-          )}
+          <div className="mt-3"><Pager page={cur} per={PER} total={list.length} noun="picks" label="Track record pages" onPage={go} /></div>
           <p className="mt-3 text-xs text-sub">Returns run from the price on the day each pick was first recommended. A pick closes when the day's high reaches the target or the low reaches the stop; a day that touches both counts as a stop. Short-term picks expire after 3 months and long-term after 24 months at the last price.</p>
         </>
       )}
@@ -296,16 +315,7 @@ export default function Picks() {
           ) : list.length ? (
             <div ref={top} className="scroll-mt-20 space-y-4">
               {pageList.map((p, i) => <PickCard key={p.symbol} p={p} h={h} market={market} rank={(cur - 1) * PER + i + 1} quote={quotes[`${market}:${p.symbol}`]} status={status} />)}
-              {pages > 1 && (
-                <nav className="flex items-center justify-between gap-3 text-sm text-sub" aria-label="Picks pages">
-                  <span className="num">{(cur - 1) * PER + 1}–{Math.min(cur * PER, list.length)} of {list.length} picks</span>
-                  <span className="flex items-center gap-1">
-                    <button className="btn-ghost border border-line !px-3 disabled:opacity-40" disabled={cur === 1} onClick={() => go(cur - 1)}><ChevronLeft size={16} /> Previous</button>
-                    <span className="num px-2 text-fg">{cur} / {pages}</span>
-                    <button className="btn-ghost border border-line !px-3 disabled:opacity-40" disabled={cur === pages} onClick={() => go(cur + 1)}>Next <ChevronRight size={16} /></button>
-                  </span>
-                </nav>
-              )}
+              <Pager page={cur} per={PER} total={list.length} noun="picks" label="Picks pages" onPage={go} />
             </div>
           ) : (
             <div className="card card-pad text-sm text-sub">
