@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Info, Radio } from 'lucide-react';
+import { ChevronLeft, ChevronRight, History, Info, Radio, Star, Trophy } from 'lucide-react';
 import clsx from 'clsx';
 import { Badge, Bar, BulletList, ScoreRing, Segmented, Stat, scoreTone } from '../components/ui';
 import { TradeLadder } from '../components/charts';
@@ -13,6 +13,12 @@ import { fmtPrice, pct } from '../lib/format';
 import type { LiveQuote, Market } from '../types';
 
 const order: Horizon[] = ['st', 'lt', 'sw'];
+type View = 'picks' | 'earlier' | 'track';
+const views: { value: View; label: string; short: string; icon: typeof Star }[] = [
+  { value: 'picks', label: "Today's picks", short: 'Today', icon: Star },
+  { value: 'earlier', label: 'Earlier', short: 'Earlier', icon: History },
+  { value: 'track', label: 'Track record', short: 'Record', icon: Trophy },
+];
 
 /** Market regime and research coverage, in the style of the IPO desk's feed strip. */
 export function RegimeStrip({ data }: { data: ResearchData }) {
@@ -144,13 +150,24 @@ const KEEP_CLOSED = 3 * 86400; // closed picks stay on the picks page for 3 days
  * Earlier recommendations: past picks that have left today's list. Open ones keep being tracked against
  * their target; a stop hit marks the pick Invalid, and closed picks drop off this list after 3 days.
  */
+function earlierOf(entries: TrackEntry[] | undefined, h: Horizon, cap: string, current: Pick[]) {
+  const now = Date.now() / 1000;
+  const live = new Set(current.map((p) => p.symbol));
+  return (entries ?? []).filter((e) => e.h === h && !(e.status === 'open' && live.has(e.symbol)) && (cap === 'All' || e.cap === cap) && (e.status === 'open' || now - (e.closedAt ?? now) < KEEP_CLOSED));
+}
+
 function EarlierPicks({ market, h, cap, entries, current }: { market: Market; h: 'st' | 'lt'; cap: string; entries?: TrackEntry[]; current: Pick[] }) {
   const [page, setPage] = useState(1);
   useEffect(() => setPage(1), [h, cap, market]);
   const now = Date.now() / 1000;
-  const live = new Set(current.map((p) => p.symbol));
-  const list = (entries ?? []).filter((e) => e.h === h && !(e.status === 'open' && live.has(e.symbol)) && (cap === 'All' || e.cap === cap) && (e.status === 'open' || now - (e.closedAt ?? now) < KEEP_CLOSED));
-  if (!list.length) return null;
+  const list = earlierOf(entries, h, cap, current);
+  if (!list.length) {
+    return (
+      <div className="card card-pad text-sm text-sub">
+        <span className="font-semibold text-fg">No earlier {horizonMeta[h].label.toLowerCase()} recommendations{cap !== 'All' ? ` among ${cap.toLowerCase()} caps` : ''}.</span> Picks show up here once they leave today's list, and stay until they hit their target or stop loss, or their window ends. Closed ones are removed after 3 days.
+      </div>
+    );
+  }
   const PER = 10;
   const cur = Math.min(page, Math.max(1, Math.ceil(list.length / PER)));
   const meta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'down' | 'neutral' | 'brand' }> = {
@@ -320,7 +337,17 @@ export default function Picks() {
   const [h, setH] = useState<Horizon>('st');
   const [params, setParams] = useSearchParams();
   const cap = params.get('cap') ?? 'All';
-  const setCap = (c: string) => setParams(c === 'All' ? {} : { cap: c }, { replace: true });
+  const view = (['earlier', 'track'].includes(params.get('view') ?? '') ? params.get('view') : 'picks') as View;
+  const setParam = (k: string, v: string | null) => {
+    const next = new URLSearchParams(params);
+    if (v) next.set(k, v);
+    else next.delete(k);
+    setParams(next, { replace: true });
+  };
+  const setCap = (c: string) => setParam('cap', c === 'All' ? null : c);
+  // Earlier picks and the track record cover short and long term only (swing setups aren't logged).
+  const setView = (v: View) => { setParam('view', v === 'picks' ? null : v); if (v !== 'picks' && h === 'sw') setH('st'); };
+  const hz = (view === 'picks' ? order : order.filter((k) => k !== 'sw'));
   const caps = useMemo(() => ['Mega', 'Large', 'Mid', 'Small', 'Micro'].filter((c) => data?.rows.some((r) => r.cap === c)), [data]);
   // The server keeps the 12 strongest per cap size; "All sizes" shows the 12 strongest overall.
   const of = (k: Horizon) => {
@@ -329,6 +356,7 @@ export default function Picks() {
   };
   const list = of(h);
   const track = useTrack(market);
+  const trackCount = (track.entries ?? []).filter((e) => e.h === (h === 'sw' ? 'st' : h) && (cap === 'All' || e.cap === cap)).length;
   const openSince = (sym: string) => track.entries?.find((e) => e.h === h && e.symbol === sym && e.status === 'open');
   // Ten picks a page; back to the first page whenever the list itself changes.
   const PER = 10;
@@ -367,18 +395,38 @@ export default function Picks() {
       ) : (
         <>
           <RegimeStrip data={data} />
+          <nav className="grid grid-cols-3 border-b border-line" role="tablist" aria-label="Picks views">
+            {views.map((v) => {
+              const n = v.value === 'picks' ? list.length : v.value === 'earlier' ? earlierOf(track.entries, h === 'sw' ? 'st' : h, cap, data.picks[h === 'sw' ? 'st' : h] ?? []).length : trackCount;
+              return (
+                <button
+                  key={v.value}
+                  role="tab"
+                  aria-selected={view === v.value}
+                  onClick={() => setView(v.value)}
+                  className={clsx('-mb-px flex items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-semibold transition-colors sm:justify-start sm:gap-2 sm:px-4',
+                    view === v.value ? 'border-brand text-fg' : 'border-transparent text-sub hover:text-fg')}
+                >
+                  <v.icon size={16} className="hidden sm:block" />
+                  <span className="sm:hidden">{v.short}</span>
+                  <span className="hidden sm:inline">{v.label}</span>
+                  <span className={clsx('num rounded-full px-2 py-0.5 text-xs', view === v.value ? 'bg-brand/10 text-brand' : 'bg-muted text-sub')}>{track.loading && v.value !== 'picks' ? '…' : n}</span>
+                </button>
+              );
+            })}
+          </nav>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Segmented value={h} onChange={setH} options={order.map((k) => ({ value: k, label: `${horizonMeta[k].label} (${of(k).length})` }))} />
+            <Segmented value={h} onChange={setH} options={hz.map((k) => ({ value: k, label: view === 'picks' ? `${horizonMeta[k].label} (${of(k).length})` : horizonMeta[k].label }))} />
             <label className="flex items-center gap-2 text-sm">
               <span className="label">Size</span>
               <select className={clsx('input w-auto py-2', cap !== 'All' && 'border-brand ring-1 ring-brand/30')} value={cap} onChange={(e) => setCap(e.target.value)} aria-label="Filter picks by market cap">
                 <option value="All">All sizes</option>
-                {caps.map((c) => <option key={c} value={c}>{c} cap ({(data.picks[h] ?? []).filter((p) => p.cap === c).length})</option>)}
+                {caps.map((c) => <option key={c} value={c}>{c} cap{view === 'picks' ? ` (${(data.picks[h] ?? []).filter((p) => p.cap === c).length})` : ''}</option>)}
               </select>
             </label>
           </div>
-          <p className="-mt-2 text-sm text-sub">{horizonMeta[h].blurb}</p>
-          {data.building ? (
+          <p className="-mt-2 text-sm text-sub">{view === 'picks' ? horizonMeta[h].blurb : view === 'earlier' ? "Past picks that have left today's list, still tracked until their target, stop loss or window end." : 'How every pick has played out since tracking began.'}</p>
+          {view !== 'picks' ? null : data.building ? (
             <div className="card card-pad text-sm text-sub">
               <span className="font-semibold text-fg">Still building.</span> {data.coverage.history} of {data.universe} stocks have been analysed so far. Picks are held back until at least 70% are in, so the ranking is fair. Check back within the hour.
             </div>
@@ -392,9 +440,9 @@ export default function Picks() {
               <span className="font-semibold text-fg">No {cap === 'All' ? '' : `${cap.toLowerCase()} cap `}{horizonMeta[h].label.toLowerCase()} pick clears the bar today.</span>{cap !== 'All' && <> <button className="font-medium text-brand hover:underline" onClick={() => setCap('All')}>Show all sizes</button>.</>} That is deliberate: a stock needs a top-decile rank, agreement across factors and no red flags. When nothing qualifies, the right trade is no trade.
             </div>
           )}
-          {h !== 'sw' && !data.building && <EarlierPicks market={market} h={h} cap={cap} entries={track.entries} current={data.picks[h] ?? []} />}
-          {h !== 'sw' && <TrackRecord market={market} h={h} cap={cap} entries={track.entries} loading={track.loading} />}
-          <div className="card card-pad">
+          {view === 'earlier' && h !== 'sw' && <EarlierPicks market={market} h={h} cap={cap} entries={track.entries} current={data.picks[h] ?? []} />}
+          {view === 'track' && h !== 'sw' && <TrackRecord market={market} h={h} cap={cap} entries={track.entries} loading={track.loading} />}
+          {view === 'picks' && <div className="card card-pad">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold"><Info size={16} className="text-brand" /> How picks are made</div>
             <ul className="space-y-3 text-sm leading-relaxed">
               {[
@@ -406,7 +454,7 @@ export default function Picks() {
               ].map(([t, d]) => <li key={t}><span className="font-semibold">{t}</span> — <span className="text-sub">{d}</span></li>)}
             </ul>
             <p className="mt-4 text-xs text-sub">Rule-based research for education, not advice. Past patterns don’t guarantee future results; size positions so a stop-out is affordable.</p>
-          </div>
+          </div>}
         </>
       )}
     </div>
