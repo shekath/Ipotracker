@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Info, Radio } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, Radio } from 'lucide-react';
 import clsx from 'clsx';
 import { Badge, Bar, BulletList, ScoreRing, Segmented, Stat, scoreTone } from '../components/ui';
 import { TradeLadder } from '../components/charts';
@@ -241,6 +241,15 @@ export default function Picks() {
     return cap === 'All' ? all.slice(0, 12) : all.filter((p) => p.cap === cap).slice(0, 12);
   };
   const list = of(h);
+  // Ten picks a page; back to the first page whenever the list itself changes.
+  const PER = 10;
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [h, cap, market]);
+  const pages = Math.max(1, Math.ceil(list.length / PER));
+  const cur = Math.min(page, pages);
+  const pageList = list.slice((cur - 1) * PER, cur * PER);
+  const top = useRef<HTMLDivElement>(null);
+  const go = (n: number) => { setPage(n); top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const ids = list.map((p) => `${market}:${p.symbol}`).join(',');
   const { quotes, status } = useQuotes(useMemo(() => (ids ? ids.split(',') : []), [ids]));
 
@@ -285,7 +294,19 @@ export default function Picks() {
               <span className="font-semibold text-fg">Still building.</span> {data.coverage.history} of {data.universe} stocks have been analysed so far. Picks are held back until at least 70% are in, so the ranking is fair. Check back within the hour.
             </div>
           ) : list.length ? (
-            <div className="space-y-4">{list.map((p, i) => <PickCard key={p.symbol} p={p} h={h} market={market} rank={i + 1} quote={quotes[`${market}:${p.symbol}`]} status={status} />)}</div>
+            <div ref={top} className="scroll-mt-20 space-y-4">
+              {pageList.map((p, i) => <PickCard key={p.symbol} p={p} h={h} market={market} rank={(cur - 1) * PER + i + 1} quote={quotes[`${market}:${p.symbol}`]} status={status} />)}
+              {pages > 1 && (
+                <nav className="flex items-center justify-between gap-3 text-sm text-sub" aria-label="Picks pages">
+                  <span className="num">{(cur - 1) * PER + 1}–{Math.min(cur * PER, list.length)} of {list.length} picks</span>
+                  <span className="flex items-center gap-1">
+                    <button className="btn-ghost border border-line !px-3 disabled:opacity-40" disabled={cur === 1} onClick={() => go(cur - 1)}><ChevronLeft size={16} /> Previous</button>
+                    <span className="num px-2 text-fg">{cur} / {pages}</span>
+                    <button className="btn-ghost border border-line !px-3 disabled:opacity-40" disabled={cur === pages} onClick={() => go(cur + 1)}>Next <ChevronRight size={16} /></button>
+                  </span>
+                </nav>
+              )}
+            </div>
           ) : (
             <div className="card card-pad text-sm text-sub">
               <span className="font-semibold text-fg">No {cap === 'All' ? '' : `${cap.toLowerCase()} cap `}{horizonMeta[h].label.toLowerCase()} pick clears the bar today.</span>{cap !== 'All' && <> <button className="font-medium text-brand hover:underline" onClick={() => setCap('All')}>Show all sizes</button>.</>} That is deliberate: a stock needs a top-decile rank, agreement across factors and no red flags. When nothing qualifies, the right trade is no trade.
