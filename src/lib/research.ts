@@ -240,3 +240,40 @@ export const horizonMeta: Record<Horizon, { label: string; short: string; blurb:
   lt: { label: 'Long term', short: 'LT', blurb: '12–24 months. Ranked on quality, growth and value, with momentum as a check.' },
   sw: { label: 'Swing', short: 'SW', blurb: '1–4 weeks. Live breakout or pullback setups whose record on the same stock is positive.' },
 };
+
+/** One logged recommendation and how it played out (see research_track on the server). */
+export interface TrackEntry {
+  symbol: string;
+  name: string;
+  sector: string | null;
+  cap: string | null;
+  h: 'st' | 'lt';
+  at: number;
+  price: number;
+  entry: [number, number];
+  target: number;
+  stop: number;
+  score: number | null;
+  status: 'open' | 'target' | 'stop' | 'expired';
+  hi: number;
+  lo: number;
+  last?: number;
+  closedAt?: number;
+  exit?: number;
+}
+
+/** Track record of past short- and long-term picks, newest first. */
+export function useTrack(market: Market) {
+  const [state, setState] = useState<{ entries?: TrackEntry[]; asOf?: number | null; loading: boolean }>({ loading: true });
+  useEffect(() => {
+    let alive = true;
+    setState({ loading: true });
+    getJSON<{ asOf: number | null; entries: TrackEntry[] }>(`research.php?market=${market}&track=1`, 20000)
+      .then((d) => alive && setState({ entries: d.entries, asOf: d.asOf, loading: false }))
+      .catch(() => alive && setState({ entries: [], loading: false }));
+    return () => {
+      alive = false;
+    };
+  }, [market]);
+  return state;
+}

@@ -137,6 +137,10 @@ S=$(curl -s "http://127.0.0.1:8098/api/research.php?market=IN&symbol=RELIANCE")
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/research.php?market=IN&symbol=NOPE")" = "404" ] || fail "unknown research symbol"
 U=$(php public/api/cron/update-research.php US 1000)
 [ "$(echo "$U" | j '$d[0]["universe"] > 500')" = "true" ] || fail "US universe (S&P 500 + Nasdaq-100): $U"
+TR=$(curl -s "http://127.0.0.1:8098/api/research.php?market=IN&track=1")
+[ "$(echo "$TR" | j 'count($d["entries"]) === count(array_filter($d["entries"], fn($e) => in_array($e["h"], ["st", "lt"])))')" = "true" ] || fail "track record endpoint: $TR"
+[ "$(echo "$TR" | j 'count($d["entries"]) > 0')" = "true" ] || fail "picks were not logged to the track record: $TR"
 echo "ok research"
+php tests/track-test.php || fail "track record"
 
 echo "ALL BACKEND TESTS PASSED"

@@ -773,6 +773,63 @@ function research_score(string $mkt, array $rows, array $regime): array
 // ---------------------------------------------------------------- run
 
 /** One research pass for a market: refresh a batch, re-score, write files. */
+/**
+ * Track record. Every short- and long-term pick is logged once, at its price when first recommended,
+ * then marked target hit, stop hit or expired from the daily highs and lows after that moment.
+ * A bar that touches both levels counts as a stop (we can't tell which came first).
+ */
+function research_track(string $mkt, array $picks, array $rows, ?int $now = null): array
+{
+    $now = $now ?? time();
+    $f = data_path("track-$mkt.json");
+    $T = read_json($f, []);
+    $T['entries'] = $T['entries'] ?? [];
+    $life = ['st' => 92 * 86400, 'lt' => 730 * 86400]; // the plans' 1–3 and 12–24 month horizons
+
+    $open = [];
+    foreach ($T['entries'] as $i => $e) if ($e['status'] === 'open') $open["{$e['h']}:{$e['symbol']}"] = $i;
+    foreach (['st', 'lt'] as $hz) {
+        foreach ($picks[$hz] ?? [] as $p) {
+            if (isset($open["$hz:{$p['symbol']}"]) || $p['price'] === null) continue;
+            $T['entries'][] = [
+                'symbol' => $p['symbol'], 'name' => $p['name'], 'sector' => $p['sector'], 'cap' => $p['cap'], 'h' => $hz,
+                'at' => $now, 'price' => round((float) $p['price'], 2), 'entry' => $p['plan']['entry'],
+                'target' => $p['plan']['target'], 'stop' => $p['plan']['stop'], 'score' => $p['plan']['score'] ?? null,
+                'status' => 'open', 'hi' => round((float) $p['price'], 2), 'lo' => round((float) $p['price'], 2),
+            ];
+            $open["$hz:{$p['symbol']}"] = array_key_last($T['entries']);
+        }
+    }
+
+    foreach ($T['entries'] as &$e) {
+        if ($e['status'] !== 'open') continue;
+        $id = "$mkt:{$e['symbol']}";
+        // Daily bars that opened after the recommendation, then the live quote for today.
+        $bars = [];
+        if ($h = cache_stale(rs_history_key($id))) {
+            foreach ($h['t'] as $j => $t) if ($t > $e['at'] && $t <= $now) $bars[] = [$t, $h['h'][$j], $h['l'][$j], $h['c'][$j]];
+        }
+        $last = $rows[$id]['price'] ?? null;
+        if ($last !== null) $bars[] = [$now, $last, $last, $last];
+        foreach ($bars as [$t, $hi, $lo, $c]) {
+            $e['hi'] = max($e['hi'], round($hi, 2));
+            $e['lo'] = min($e['lo'], round($lo, 2));
+            $e['last'] = round($c, 2);
+            if ($lo <= $e['stop']) { $e['status'] = 'stop'; $e['closedAt'] = $t; $e['exit'] = $e['stop']; break; }
+            if ($hi >= $e['target']) { $e['status'] = 'target'; $e['closedAt'] = $t; $e['exit'] = $e['target']; break; }
+        }
+        if ($e['status'] === 'open' && $now - $e['at'] > $life[$e['h']]) {
+            $e['status'] = 'expired';
+            $e['closedAt'] = $now;
+            $e['exit'] = $e['last'] ?? $e['price'];
+        }
+    }
+    unset($e);
+    $T['asOf'] = $now;
+    write_json($f, $T);
+    return $T;
+}
+
 function research_run(string $mkt, ?int $batch = null): array
 {
     $lock = fopen(data_path("research-$mkt.lock"), 'c');
@@ -841,6 +898,7 @@ function research_run(string $mkt, ?int $batch = null): array
         }));
     }
     unset($list);
+    if (!$building) research_track($mkt, $picks, $rows);
     write_json(data_path("research-$mkt.json"), $meta + ['building' => $building, 'picks' => $picks, 'rows' => $table]);
     $full = [];
     foreach ($scored['rows'] as $r) $full[$r['symbol']] = $r;

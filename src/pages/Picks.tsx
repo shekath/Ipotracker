@@ -2,13 +2,13 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Info, Radio } from 'lucide-react';
 import clsx from 'clsx';
-import { Badge, Bar, BulletList, ScoreRing, Segmented, scoreTone } from '../components/ui';
+import { Badge, Bar, BulletList, ScoreRing, Segmented, Stat, scoreTone } from '../components/ui';
 import { TradeLadder } from '../components/charts';
 import { ChangeTag, LiveDot, timeAgo } from '../components/live';
 import { useQuotes, type FeedStatus } from '../lib/live';
 import { marketTabs } from '../components/Flag';
 import { useMarketPref } from '../lib/marketPref';
-import { factorLabel, horizonMeta, reasons, risks, useResearch, type Factors, type Horizon, type Pick, type ResearchData } from '../lib/research';
+import { factorLabel, horizonMeta, reasons, risks, useResearch, useTrack, type Factors, type Horizon, type Pick, type ResearchData, type TrackEntry } from '../lib/research';
 import { fmtPrice, pct } from '../lib/format';
 import type { LiveQuote, Market } from '../types';
 
@@ -108,6 +108,125 @@ function PickCard({ p, h, market, rank, quote, status }: { p: Pick; h: Horizon; 
   );
 }
 
+const day = (t: number) => new Date(t * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+const statusMeta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'down' | 'neutral' | 'brand' }> = {
+  target: { label: 'Target hit', tone: 'up' },
+  stop: { label: 'Stop hit', tone: 'down' },
+  expired: { label: 'Expired', tone: 'neutral' },
+  open: { label: 'Open', tone: 'brand' },
+};
+
+/** How every past short- or long-term pick played out: target hit, stop hit, expired or still open. */
+function TrackRecord({ market, h, cap }: { market: Market; h: 'st' | 'lt'; cap: string }) {
+  const { entries, loading } = useTrack(market);
+  const [more, setMore] = useState(false);
+  const list = (entries ?? []).filter((e) => e.h === h && (cap === 'All' || e.cap === cap));
+  const n = (s: TrackEntry['status']) => list.filter((e) => e.status === s).length;
+  const closed = n('target') + n('stop') + n('expired');
+  const ret = (e: TrackEntry) => ((e.exit ?? e.last ?? e.price) / e.price - 1) * 100;
+  const avgClosed = closed ? list.filter((e) => e.status !== 'open').reduce((a, e) => a + ret(e), 0) / closed : null;
+  const shown = more ? list : list.slice(0, 15);
+  const when = (e: TrackEntry) => {
+    const d = Math.max(0, Math.round(((e.closedAt ?? Date.now() / 1000) - e.at) / 86400));
+    if (e.closedAt) return `${day(e.closedAt)} · after ${d} day${d === 1 ? '' : 's'}`;
+    return d === 0 ? 'Recommended today' : `${d} day${d === 1 ? '' : 's'} so far · now ${fmtPrice(e.last ?? e.price, market)}`;
+  };
+  const label = horizonMeta[h].label.toLowerCase();
+
+  return (
+    <section className="card card-pad" aria-labelledby="track-title">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="track-title" className="text-lg font-semibold">Track record · {horizonMeta[h].label}</h2>
+        <span className="text-xs text-sub">Every {label} pick since tracking began{cap !== 'All' ? ` · ${cap} cap` : ''}</span>
+      </div>
+
+      {loading ? (
+        <div className="mt-4 h-24 animate-pulse rounded-xl bg-muted" />
+      ) : !list.length ? (
+        <p className="mt-3 text-sm text-sub">No {label} picks logged yet. Each new pick is recorded at its price on the day it's recommended, then checked against its target and stop loss after every research run.</p>
+      ) : (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <Stat label="Recommended" value={list.length} />
+            <Stat label="Target hit" value={n('target')} tone="up" />
+            <Stat label="Stop hit" value={n('stop')} tone={n('stop') ? 'down' : undefined} />
+            <Stat label="Open" value={n('open')} />
+            <Stat label="Success rate" value={closed ? `${Math.round((n('target') / closed) * 100)}%` : '—'} hint={closed ? `${n('target')} of ${closed} closed${avgClosed != null ? ` · avg return ${pct(avgClosed, 1)}` : ''}` : 'None closed yet'} />
+          </div>
+
+          {/* Phones: one compact row per pick. */}
+          <ul className="mt-4 divide-y divide-line sm:hidden">
+            {shown.map((e) => {
+              const r = ret(e);
+              return (
+                <li key={`${e.symbol}-${e.at}`} className="py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className="truncate font-semibold hover:text-brand">{e.symbol}</Link>
+                      <Badge tone={statusMeta[e.status].tone}>{statusMeta[e.status].label}</Badge>
+                    </span>
+                    <span className={clsx('num shrink-0 font-semibold', r >= 0 ? 'text-up' : 'text-down')}>{pct(r, 1)}</span>
+                  </div>
+                  <div className="num mt-1 text-xs text-sub">
+                    {day(e.at)} at {fmtPrice(e.price, market)} · Target {fmtPrice(e.target, market)} · Stop {fmtPrice(e.stop, market)}
+                  </div>
+                  <div className="mt-0.5 text-xs text-sub">{when(e)}</div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="mt-4 hidden overflow-x-auto sm:block">
+            <table className="table-base [&_td]:px-3 [&_th]:px-3">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>Recommended</th>
+                  <th className="!text-right">Target</th>
+                  <th className="hidden !text-right sm:table-cell">Stop</th>
+                  <th>Status</th>
+                  <th className="!text-right">Return</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((e) => {
+                  const r = ret(e);
+                  return (
+                    <tr key={`${e.symbol}-${e.at}`}>
+                      <td>
+                        <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className="font-semibold hover:text-brand">{e.symbol}</Link>
+                        <span className="block max-w-[11rem] truncate text-xs text-sub" title={e.name}>{e.name}</span>
+                      </td>
+                      <td>
+                        <span className="block">{day(e.at)}</span>
+                        <span className="num block text-xs text-sub">at {fmtPrice(e.price, market)}</span>
+                      </td>
+                      <td className="num text-right">{fmtPrice(e.target, market)}<span className="block text-xs text-up">{pct((e.target / e.price - 1) * 100, 1)}</span></td>
+                      <td className="num hidden text-right sm:table-cell">{fmtPrice(e.stop, market)}<span className="block text-xs text-down">{pct((e.stop / e.price - 1) * 100, 1)}</span></td>
+                      <td>
+                        <Badge tone={statusMeta[e.status].tone}>{statusMeta[e.status].label}</Badge>
+                        <span className="block pt-0.5 text-xs text-sub">{when(e)}</span>
+                      </td>
+                      <td className={clsx('num text-right font-semibold', r >= 0 ? 'text-up' : 'text-down')}>
+                        {pct(r, 1)}
+                        <span className="block text-xs font-normal text-sub">{e.status === 'open' ? `now ${fmtPrice(e.last ?? e.price, market)}` : `exit ${fmtPrice(e.exit ?? e.price, market)}`}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {list.length > 15 && (
+            <button className="mt-3 text-sm font-medium text-brand hover:underline" onClick={() => setMore((m) => !m)}>{more ? 'Show fewer' : `Show all ${list.length}`}</button>
+          )}
+          <p className="mt-3 text-xs text-sub">Returns run from the price on the day each pick was first recommended. A pick closes when the day's high reaches the target or the low reaches the stop; a day that touches both counts as a stop. Short-term picks expire after 3 months and long-term after 24 months at the last price.</p>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function Picks() {
   const [market, setMarket] = useMarketPref();
   const { data, error, loading } = useResearch(market);
@@ -172,6 +291,7 @@ export default function Picks() {
               <span className="font-semibold text-fg">No {cap === 'All' ? '' : `${cap.toLowerCase()} cap `}{horizonMeta[h].label.toLowerCase()} pick clears the bar today.</span>{cap !== 'All' && <> <button className="font-medium text-brand hover:underline" onClick={() => setCap('All')}>Show all sizes</button>.</>} That is deliberate: a stock needs a top-decile rank, agreement across factors and no red flags. When nothing qualifies, the right trade is no trade.
             </div>
           )}
+          {h !== 'sw' && <TrackRecord market={market} h={h} cap={cap} />}
           <div className="card card-pad">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold"><Info size={16} className="text-brand" /> How picks are made</div>
             <ul className="space-y-3 text-sm leading-relaxed">
