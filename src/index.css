@@ -10,9 +10,12 @@
   --fg: 15 23 42;
   --sub: 100 112 131;
   --brand: 16 185 129;
-  --up: 5 150 105;
-  --down: 220 38 38;
-  --warn: 217 119 6;
+  /* Text-safe shades (4.5:1 or better on surface, bg and muted); --brand stays the fill colour. */
+  --brand-ink: 4 120 87;
+  --up: 4 120 87;
+  --down: 185 28 28;
+  --warn: 180 83 9;
+  --info: 29 78 216;
   color-scheme: light;
 }
 
@@ -24,9 +27,11 @@
   --fg: 236 239 244;
   --sub: 145 155 172;
   --brand: 52 211 153;
+  --brand-ink: 52 211 153;
   --up: 52 211 153;
   --down: 248 113 113;
   --warn: 251 191 36;
+  --info: 147 197 253;
   color-scheme: dark;
 }
 
@@ -38,6 +43,27 @@
   }
   * { @apply border-line; }
   ::selection { background: rgb(var(--brand) / 0.25); }
+  /* One visible focus style for keyboard users everywhere; fields keep their own ring. */
+  :focus-visible { outline: 2px solid rgb(var(--brand-ink)); outline-offset: 2px; }
+  /* Keep content clear of the notch and home indicator (index.html sets viewport-fit=cover). */
+  body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+}
+
+/* Reduce Motion: stop repeating pulses and smooth scrolling. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Reduce Transparency: bars become solid. */
+@media (prefers-reduced-transparency: reduce) {
+  .bar-solid { background-color: rgb(var(--surface)); backdrop-filter: none; }
+}
+
+/* Touch screens: controls get the 44 pt default hit size. */
+@media (pointer: coarse) {
+  .btn, .chip, .input, [role='tab'] { min-height: 44px; }
+  /* Icon-only buttons: grow the hit area, keep the glyph size. */
+  .tap { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
 }
 
 @layer components {
@@ -54,7 +80,7 @@
   }
   .btn-ghost { @apply btn text-sub hover:text-fg hover:bg-muted; }
   .input {
-    @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-sub/70 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand;
+    @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-sub focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand;
   }
   .table-base { @apply w-full text-sm; }
   .table-base th { @apply px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-sub whitespace-nowrap; }

@@ -76,7 +76,7 @@ export default function Dashboard() {
         <div className="relative max-w-3xl">
           <Badge tone="brand" className="!whitespace-normal"><Sparkles size={12} className="shrink-0" /> {status === 'live' ? (isIN ? 'Live prices · auto-tracked IPOs' : 'Live prices') : `Research snapshot · ${STOCK_SNAPSHOT}`}</Badge>
           <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-5xl sm:leading-[1.1]">
-            Institutional-grade research for <span className="text-brand">{isIN ? 'Indian' : 'US'}</span> markets.
+            Institutional-grade research for <span className="text-brand-ink">{isIN ? 'Indian' : 'US'}</span> markets.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-sub sm:text-lg">
             {isIN
@@ -120,7 +120,7 @@ export default function Dashboard() {
                 {modelPicks.map(({ h, p }) => (
                   <tr key={h + p.symbol} className="transition-colors hover:bg-muted/50">
                     <td>
-                      <Link to={`/stocks/${market}/${encodeURIComponent(p.symbol)}`} className="font-semibold hover:text-brand">{p.symbol}</Link>
+                      <Link to={`/stocks/${market}/${encodeURIComponent(p.symbol)}`} className="font-semibold hover:text-brand-ink">{p.symbol}</Link>
                       <span className="block max-w-[12rem] truncate text-xs text-sub">{p.name}</span>
                     </td>
                     <td><Badge tone="up">{horizonMeta[h].label}</Badge>{p.plan.type && <span className="ml-1.5 text-xs text-sub">{p.plan.type}</span>}</td>
@@ -154,7 +154,7 @@ export default function Dashboard() {
           {indexDefs.slice(0, 8).map((d) => (
             <Link key={d.id} to={`/screener?index=${d.id}`} className="card group p-4 transition-all hover:-translate-y-0.5 hover:border-fg/20">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold group-hover:text-brand">{d.name}</span>
+                <span className="font-semibold group-hover:text-brand-ink">{d.name}</span>
                 <span className="text-[11px] text-sub">{d.exchange}</span>
               </div>
               <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-sub">{d.description}</p>
@@ -172,7 +172,7 @@ export default function Dashboard() {
               <ul className="divide-y divide-line">
                 {list.map((s) => (
                   <li key={s.symbol}>
-                    <Link to={`/stocks/${s.market}/${encodeURIComponent(s.symbol)}`} className="flex items-center justify-between gap-3 py-2.5 hover:text-brand">
+                    <Link to={`/stocks/${s.market}/${encodeURIComponent(s.symbol)}`} className="flex items-center justify-between gap-3 py-2.5 hover:text-brand-ink">
                       <span className="min-w-0"><span className="font-semibold">{s.symbol}</span> <span className="truncate text-xs text-sub">{s.name}</span></span>
                       <span className={clsx('num text-sm font-semibold', s.quote!.changePct >= 0 ? 'text-up' : 'text-down')}>{pct(s.quote!.changePct, 2)}</span>
                     </Link>
@@ -190,7 +190,7 @@ export default function Dashboard() {
           <div className="space-y-3.5">
             {sectorStats.map((s) => (
               <Link to={`/stocks?sector=${encodeURIComponent(s.sector)}&market=${market}`} key={s.sector} className="group grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 sm:grid-cols-[10rem_1fr_auto]">
-                <div className="truncate text-sm font-medium group-hover:text-brand">{s.sector} <span className="text-xs text-sub">({s.n})</span></div>
+                <div className="truncate text-sm font-medium group-hover:text-brand-ink">{s.sector} <span className="text-xs text-sub">({s.n})</span></div>
                 <div className="relative h-2 rounded-full bg-muted">
                   <div className={clsx('absolute h-2 rounded-full', s.up >= 0 ? 'bg-up' : 'bg-down')} style={{ width: `${(Math.abs(s.up) / maxUp) * 100}%` }} />
                 </div>
@@ -208,7 +208,7 @@ export default function Dashboard() {
               { icon: Rocket, t: 'IPO verdicts', d: 'Apply / Avoid calls built from business quality, financials, valuation, promoter and market signals.' },
             ].map(({ icon: Icon, t, d }) => (
               <li key={t} className="flex gap-3">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand"><Icon size={16} /></span>
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand-ink"><Icon size={16} /></span>
                 <div>
                   <div className="font-semibold">{t}</div>
                   <p className="mt-0.5 leading-relaxed text-sub">{d}</p>

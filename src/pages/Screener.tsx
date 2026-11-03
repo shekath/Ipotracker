@@ -10,6 +10,7 @@ import { useMarketPref } from '../lib/marketPref';
 import { marketTabs } from '../components/Flag';
 import { pct } from '../lib/format';
 import type { Market, ScreenerRow } from '../types';
+import { scrollBehavior } from '../lib/motion';
 
 type SortKey = 'name' | 'price' | 'changePct' | 'mcap' | 'pe' | 'pb' | 'divYield' | 'fromHigh';
 type Preset = 'all' | 'gainers' | 'losers' | 'nearHigh' | 'nearLow' | 'value' | 'dividend' | 'covered';
@@ -303,13 +304,13 @@ export default function Screener() {
                         <span className="num w-7 shrink-0 text-right text-xs text-sub">{offset + i + 1}</span>
                         <div className="min-w-0">
                           {r.research ? (
-                            <Link to={`/stocks/${market}/${encodeURIComponent(r.symbol)}`} className="block font-semibold hover:text-brand">{r.symbol}</Link>
+                            <Link to={`/stocks/${market}/${encodeURIComponent(r.symbol)}`} className="block font-semibold hover:text-brand-ink">{r.symbol}</Link>
                           ) : (
-                            <a href={extLink(r.symbol)} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-semibold hover:text-brand">{r.symbol}<ExternalLink size={11} className="text-sub opacity-0 group-hover:opacity-100" /></a>
+                            <a href={extLink(r.symbol)} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-semibold hover:text-brand-ink">{r.symbol}<ExternalLink size={11} className="text-sub opacity-0 group-hover:opacity-100" /></a>
                           )}
                           <span className="block truncate text-xs text-sub">{r.name}</span>
                         </div>
-                        {r.research && <Link to={`/stocks/${market}/${encodeURIComponent(r.symbol)}`}><Badge tone="brand" className="!px-2 !text-[10px]">Research</Badge></Link>}
+                        {r.research && <Link to={`/stocks/${market}/${encodeURIComponent(r.symbol)}`}><Badge tone="brand" className="!px-2 !text-[11px]">Research</Badge></Link>}
                       </div>
                     </td>
                     <td className="hidden max-w-[11rem] truncate text-sub md:table-cell">{r.industry ?? '—'}</td>
@@ -336,10 +337,10 @@ export default function Screener() {
               })}
             </tbody>
           </table>
-          <Pagination page={current} pageCount={pageCount} pageSize={pageSize} total={rows.length} offset={offset} shown={pageRows.length} onPage={(n) => { setPage(n); window.scrollTo({ top: 0, behavior: 'smooth' }); }} onPageSize={setPageSize} />
+          <Pagination page={current} pageCount={pageCount} pageSize={pageSize} total={rows.length} offset={offset} shown={pageRows.length} onPage={(n) => { setPage(n); window.scrollTo({ top: 0, behavior: scrollBehavior() }); }} onPageSize={setPageSize} />
         </div>
       )}
-      <p className="mt-4 text-xs text-sub">Stocks with a <Badge tone="brand" className="!px-2 !text-[10px]">Research</Badge> badge have a full MarketLens analysis with targets. Others link to the exchange quote page. Valuation data from Yahoo Finance; P/E shown only when earnings are positive.</p>
+      <p className="mt-4 text-xs text-sub">Stocks with a <Badge tone="brand" className="!px-2 !text-[11px]">Research</Badge> badge have a full MarketLens analysis with targets. Others link to the exchange quote page. Valuation data from Yahoo Finance; P/E shown only when earnings are positive.</p>
     </div>
   );
 }

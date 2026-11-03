@@ -23,7 +23,7 @@ export function WatchButton({ id, className }: { id: string; className?: string 
       }}
       aria-pressed={on}
       aria-label={on ? 'Remove from watchlist' : 'Add to watchlist'}
-      className={clsx('rounded-lg p-1.5 transition-colors hover:bg-muted', on ? 'text-warn' : 'text-sub', className)}
+      className={clsx('tap rounded-lg p-1.5 transition-colors hover:bg-muted', on ? 'text-warn' : 'text-sub', className)}
     >
       <Star size={17} fill={on ? 'currentColor' : 'none'} />
     </button>
@@ -41,7 +41,7 @@ export default function StockCard({ s, status = 'offline' }: { s: LiveStock; sta
             <span>{flag(s.market)}</span>
             <span className="font-medium">{s.exchange}: {s.symbol}</span>
           </div>
-          <h3 className="mt-1 truncate text-base font-semibold group-hover:text-brand">{s.name}</h3>
+          <h3 className="mt-1 truncate text-base font-semibold group-hover:text-brand-ink">{s.name}</h3>
           <div className="mt-0.5 truncate text-xs text-sub">{s.sector} · {s.industry}</div>
         </div>
         <WatchButton id={`${s.market}:${s.symbol}`} className="-mr-1.5 -mt-1" />

@@ -16,6 +16,8 @@ export default {
         fg: 'rgb(var(--fg) / <alpha-value>)',
         sub: 'rgb(var(--sub) / <alpha-value>)',
         brand: 'rgb(var(--brand) / <alpha-value>)',
+        'brand-ink': 'rgb(var(--brand-ink) / <alpha-value>)',
+        info: 'rgb(var(--info) / <alpha-value>)',
         up: 'rgb(var(--up) / <alpha-value>)',
         down: 'rgb(var(--down) / <alpha-value>)',
         warn: 'rgb(var(--warn) / <alpha-value>)',

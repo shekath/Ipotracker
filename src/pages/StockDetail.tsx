@@ -13,6 +13,7 @@ import NotFound from './NotFound';
 import QuantStock from './QuantStock';
 import { stockId, useLiveStocks } from '../lib/live';
 import { ChangeTag, LiveDot, PriceChart, timeAgo } from '../components/live';
+import { scrollBehavior } from '../lib/motion';
 
 const sections = [
   { id: 'chart', label: 'Price chart' },
@@ -103,7 +104,7 @@ function StockView({ s: base }: { s: Stock }) {
               <span>{flag(s.market)}</span>
               <span className="font-medium">{s.exchange}: {s.symbol}</span>
               <span>·</span>
-              <Link to={`/stocks?market=${s.market}&sector=${encodeURIComponent(s.sector)}`} className="hover:text-brand">{s.sector}</Link>
+              <Link to={`/stocks?market=${s.market}&sector=${encodeURIComponent(s.sector)}`} className="hover:text-brand-ink">{s.sector}</Link>
             </div>
             <div className="mt-1.5 flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{s.name}</h1>
@@ -153,7 +154,7 @@ function StockView({ s: base }: { s: Stock }) {
       <div className="sticky top-16 z-30 -mx-4 mt-6 border-b border-line bg-bg/85 px-4 backdrop-blur-xl sm:mx-0 sm:rounded-xl sm:border sm:px-2">
         <div className="flex gap-1 overflow-x-auto py-2 no-scrollbar">
           {sections.filter((x) => x.id !== 'peers' || peers.length).map((x) => (
-            <a key={x.id} href={`#${x.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth' }); }} className="whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-sub hover:bg-muted hover:text-fg">
+            <a key={x.id} href={`#${x.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(x.id)?.scrollIntoView({ behavior: scrollBehavior() }); }} className="whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-sub hover:bg-muted hover:text-fg">
               {x.label}
             </a>
           ))}
@@ -173,10 +174,10 @@ function StockView({ s: base }: { s: Stock }) {
           <SectionHeader id="verdict" title="Analyst verdict & trade plan" subtitle="Targets and stop losses for short-term and long-term horizons" />
           <div className="grid gap-6 lg:grid-cols-5">
             <div className="card card-pad lg:col-span-2">
-              <div className="flex items-center gap-2 text-sm font-semibold"><Gauge size={16} className="text-brand" /> Investment thesis</div>
+              <div className="flex items-center gap-2 text-sm font-semibold"><Gauge size={16} className="text-brand-ink" /> Investment thesis</div>
               <p className="mt-3 text-[15px] leading-relaxed">{s.thesis}</p>
               <div className="mt-6 rounded-xl border border-line p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold"><Calculator size={16} className="text-brand" /> What-if price</div>
+                <div className="flex items-center gap-2 text-sm font-semibold"><Calculator size={16} className="text-brand-ink" /> What-if price</div>
                 <p className="mt-1 text-xs text-sub">{q ? 'Levels use the live price. Try another price to test entries and exits.' : 'Enter today’s market price to re-check upside and level status.'}</p>
                 <div className="relative mt-3">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-sub">{s.market === 'IN' ? '₹' : '$'}</span>
@@ -191,7 +192,7 @@ function StockView({ s: base }: { s: Stock }) {
             </div>
             <div className="card card-pad lg:col-span-3">
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm font-semibold"><CircleDollarSign size={16} className="text-brand" /> Trade plan</div>
+                <div className="flex items-center gap-2 text-sm font-semibold"><CircleDollarSign size={16} className="text-brand-ink" /> Trade plan</div>
                 <Segmented size="sm" value={horizon} onChange={setHorizon} options={[{ value: 'short', label: 'Short term' }, { value: 'long', label: 'Long term' }]} />
               </div>
               <TradeLadder levels={levels} price={cmp} market={s.market} />
@@ -370,7 +371,7 @@ function StockView({ s: base }: { s: Stock }) {
                     return (
                       <tr key={p.symbol} className={clsx(p.symbol === s.symbol && 'bg-brand/5')}>
                         <td>
-                          {p.symbol === s.symbol ? <span className="font-semibold">{p.symbol}</span> : <Link to={`/stocks/${p.market}/${encodeURIComponent(p.symbol)}`} className="font-semibold hover:text-brand">{p.symbol}</Link>}
+                          {p.symbol === s.symbol ? <span className="font-semibold">{p.symbol}</span> : <Link to={`/stocks/${p.market}/${encodeURIComponent(p.symbol)}`} className="font-semibold hover:text-brand-ink">{p.symbol}</Link>}
                           <span className="ml-2 text-xs text-sub">{p.name}</span>
                         </td>
                         <td className="num text-right">{p.metrics.pe.toFixed(1)}</td>

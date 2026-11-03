@@ -1,13 +1,14 @@
 import clsx from 'clsx';
 import type { ReactNode } from 'react';
 
-export type Tone = 'up' | 'down' | 'warn' | 'brand' | 'neutral';
+export type Tone = 'up' | 'down' | 'warn' | 'brand' | 'info' | 'neutral';
 
 const toneCls: Record<Tone, string> = {
   up: 'bg-up/10 text-up ring-up/20',
   down: 'bg-down/10 text-down ring-down/20',
   warn: 'bg-warn/10 text-warn ring-warn/25',
-  brand: 'bg-brand/10 text-brand ring-brand/20',
+  brand: 'bg-brand/10 text-brand-ink ring-brand/20',
+  info: 'bg-info/10 text-info ring-info/20',
   neutral: 'bg-muted text-sub ring-line',
 };
 
@@ -44,7 +45,7 @@ export function Stat({ label, value, hint, tone }: { label: string; value: React
 export function ScoreRing({ score, size = 64, label }: { score: number; size?: number; label?: string }) {
   const r = (size - 8) / 2;
   const c = 2 * Math.PI * r;
-  const color = score >= 70 ? 'text-up' : score >= 55 ? 'text-brand' : score >= 45 ? 'text-warn' : 'text-down';
+  const color = score >= 70 ? 'text-up' : score >= 55 ? 'text-brand-ink' : score >= 45 ? 'text-warn' : 'text-down';
   return (
     <div className="relative inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }} role="img" aria-label={`Score ${score} out of 100`}>
       <svg width={size} height={size} className="-rotate-90">
@@ -53,14 +54,14 @@ export function ScoreRing({ score, size = 64, label }: { score: number; size?: n
       </svg>
       <div className="absolute flex flex-col items-center leading-none">
         <span className="num text-base font-bold" style={{ fontSize: size * 0.28 }}>{score}</span>
-        {label && <span className="mt-0.5 text-[10px] text-sub">{label}</span>}
+        {label && <span className="mt-0.5 text-[11px] text-sub">{label}</span>}
       </div>
     </div>
   );
 }
 
 export function Bar({ value, tone = 'brand' }: { value: number; tone?: Tone }) {
-  const cls = { up: 'bg-up', down: 'bg-down', warn: 'bg-warn', brand: 'bg-brand', neutral: 'bg-sub' }[tone];
+  const cls = { up: 'bg-up', down: 'bg-down', warn: 'bg-warn', brand: 'bg-brand', info: 'bg-info', neutral: 'bg-sub' }[tone];
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
       <div className={clsx('h-full rounded-full transition-all duration-700', cls)} style={{ width: `${Math.max(2, Math.min(100, value))}%` }} />
@@ -93,7 +94,7 @@ export function Segmented<T extends string>({ options, value, onChange, size = '
 }
 
 export function BulletList({ items, tone }: { items: string[]; tone: Tone }) {
-  const dot = { up: 'bg-up', down: 'bg-down', warn: 'bg-warn', brand: 'bg-brand', neutral: 'bg-sub' }[tone];
+  const dot = { up: 'bg-up', down: 'bg-down', warn: 'bg-warn', brand: 'bg-brand', info: 'bg-info', neutral: 'bg-sub' }[tone];
   return (
     <ul className="space-y-2.5">
       {items.map((t) => (

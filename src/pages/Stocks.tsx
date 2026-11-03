@@ -146,7 +146,7 @@ function ReportsView() {
                 return (
                   <tr key={s.market + s.symbol} className="transition-colors hover:bg-muted/50">
                     <td>
-                      <Link to={`/stocks/${s.market}/${encodeURIComponent(s.symbol)}`} className="flex items-center gap-2.5 hover:text-brand">
+                      <Link to={`/stocks/${s.market}/${encodeURIComponent(s.symbol)}`} className="flex items-center gap-2.5 hover:text-brand-ink">
                         <span>{flag(s.market)}</span>
                         <span><span className="block font-semibold">{s.symbol}</span><span className="block max-w-[12rem] truncate text-xs text-sub">{s.name}</span></span>
                       </Link>

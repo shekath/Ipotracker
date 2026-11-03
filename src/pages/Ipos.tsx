@@ -97,11 +97,11 @@ export default function Ipos() {
           </ul>
         </div>
         <div className="card card-pad">
-          <div className="mb-4 flex items-center gap-2 text-sm font-semibold"><Info size={16} className="text-brand" /> Reading the verdicts</div>
+          <div className="mb-4 flex items-center gap-2 text-sm font-semibold"><Info size={16} className="text-brand-ink" /> Reading the verdicts</div>
           <ul className="space-y-3 text-sm leading-relaxed">
             <li><span className="font-semibold text-up">Apply</span> — <span className="text-sub">good for listing and long-term holding.</span></li>
             <li><span className="font-semibold text-up">Apply · Long Term</span> — <span className="text-sub">fundamentals strong; listing pop uncertain.</span></li>
-            <li><span className="font-semibold text-brand">Apply · Listing Gains</span> — <span className="text-sub">demand likely strong; valuation full for long-term.</span></li>
+            <li><span className="font-semibold text-brand-ink">Apply · Listing Gains</span> — <span className="text-sub">demand likely strong; valuation full for long-term.</span></li>
             <li><span className="font-semibold text-warn">Neutral</span> — <span className="text-sub">fairly priced; watch post-listing.</span></li>
             <li><span className="font-semibold text-down">Avoid</span> — <span className="text-sub">risks outweigh rewards at the offer price.</span></li>
           </ul>

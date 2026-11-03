@@ -65,7 +65,7 @@ export default function Methodology() {
         {blocks.map((b, i) => (
           <section key={b.title} className="card card-pad">
             <div className="flex items-center gap-3">
-              <span className="num flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-xs font-bold text-brand">{i + 1}</span>
+              <span className="num flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-xs font-bold text-brand-ink">{i + 1}</span>
               <h2 className="text-base font-semibold">{b.title}</h2>
             </div>
             <div className="mt-3 space-y-2.5 text-sm leading-relaxed text-sub">

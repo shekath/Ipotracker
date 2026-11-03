@@ -11,6 +11,7 @@ import { useMarketPref } from '../lib/marketPref';
 import { factorLabel, horizonMeta, reasons, risks, useResearch, useTrack, type Factors, type Horizon, type Pick, type ResearchData, type TrackEntry } from '../lib/research';
 import { fmtPrice, pct } from '../lib/format';
 import type { LiveQuote, Market } from '../types';
+import { scrollBehavior } from '../lib/motion';
 
 const order: Horizon[] = ['st', 'lt', 'sw'];
 type View = 'picks' | 'earlier' | 'track';
@@ -68,7 +69,7 @@ function PickCard({ p, h, market, rank, quote, status, since }: { p: Pick; h: Ho
             {p.idx.slice(0, 2).map((i) => <Badge key={i} tone="neutral">{i}</Badge>)}
           </div>
           <h3 className="mt-1.5 text-lg font-semibold">
-            <Link to={`/stocks/${market}/${encodeURIComponent(p.symbol)}`} className="hover:text-brand">{p.symbol}</Link>
+            <Link to={`/stocks/${market}/${encodeURIComponent(p.symbol)}`} className="hover:text-brand-ink">{p.symbol}</Link>
             <span className="ml-2 text-sm font-normal text-sub">{p.name}</span>
           </h3>
           <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -137,11 +138,11 @@ function Pager({ page, per, total, noun, label, onPage }: { page: number; per: n
 }
 
 const day = (t: number) => new Date(t * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
-const statusMeta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'down' | 'neutral' | 'brand' }> = {
+const statusMeta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'down' | 'neutral' | 'info' }> = {
   target: { label: 'Target hit', tone: 'up' },
   stop: { label: 'Stop hit', tone: 'down' },
   expired: { label: 'Expired', tone: 'neutral' },
-  open: { label: 'Open', tone: 'brand' },
+  open: { label: 'Open', tone: 'info' },
 };
 
 const KEEP_CLOSED = 3 * 86400; // closed picks stay on the picks page for 3 days, then live on only in the track record
@@ -170,8 +171,8 @@ function EarlierPicks({ market, h, cap, entries, current }: { market: Market; h:
   }
   const PER = 10;
   const cur = Math.min(page, Math.max(1, Math.ceil(list.length / PER)));
-  const meta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'down' | 'neutral' | 'brand' }> = {
-    open: { label: 'Active', tone: 'brand' },
+  const meta: Record<TrackEntry['status'], { label: string; tone: 'up' | 'down' | 'neutral' | 'info' }> = {
+    open: { label: 'Active', tone: 'info' },
     target: { label: 'Target hit', tone: 'up' },
     stop: { label: 'Invalid', tone: 'down' },
     expired: { label: 'Expired', tone: 'neutral' },
@@ -196,7 +197,7 @@ function EarlierPicks({ market, h, cap, entries, current }: { market: Market; h:
             <li key={`${e.symbol}-${e.at}`} className={clsx('grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 py-3', e.status === 'stop' && 'opacity-75')}>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className={clsx('font-semibold hover:text-brand', e.status === 'stop' && 'line-through decoration-down/60')}>{e.symbol}</Link>
+                  <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className={clsx('font-semibold hover:text-brand-ink', e.status === 'stop' && 'line-through decoration-down/60')}>{e.symbol}</Link>
                   <span className="truncate text-sm text-sub">{e.name}</span>
                   <Badge tone={meta[e.status].tone}>{meta[e.status].label}</Badge>
                 </div>
@@ -231,7 +232,7 @@ function TrackRecord({ market, h, cap, entries, loading }: { market: Market; h: 
   const avgClosed = closed ? list.filter((e) => e.status !== 'open').reduce((a, e) => a + ret(e), 0) / closed : null;
   const cur = Math.min(page, Math.max(1, Math.ceil(list.length / PER)));
   const shown = list.slice((cur - 1) * PER, cur * PER);
-  const go = (n: number) => { setPage(n); top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const go = (n: number) => { setPage(n); top.current?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' }); };
   const when = (e: TrackEntry) => {
     const d = Math.max(0, Math.round(((e.closedAt ?? Date.now() / 1000) - e.at) / 86400));
     if (e.closedAt) return `${day(e.closedAt)} · after ${d} day${d === 1 ? '' : 's'}`;
@@ -268,7 +269,7 @@ function TrackRecord({ market, h, cap, entries, loading }: { market: Market; h: 
                 <li key={`${e.symbol}-${e.at}`} className="py-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="flex min-w-0 items-center gap-2">
-                      <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className="truncate font-semibold hover:text-brand">{e.symbol}</Link>
+                      <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className="truncate font-semibold hover:text-brand-ink">{e.symbol}</Link>
                       <Badge tone={statusMeta[e.status].tone}>{statusMeta[e.status].label}</Badge>
                     </span>
                     <span className={clsx('num shrink-0 font-semibold', r >= 0 ? 'text-up' : 'text-down')}>{pct(r, 1)}</span>
@@ -300,7 +301,7 @@ function TrackRecord({ market, h, cap, entries, loading }: { market: Market; h: 
                   return (
                     <tr key={`${e.symbol}-${e.at}`}>
                       <td>
-                        <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className="font-semibold hover:text-brand">{e.symbol}</Link>
+                        <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className="font-semibold hover:text-brand-ink">{e.symbol}</Link>
                         <span className="block max-w-[11rem] truncate text-xs text-sub" title={e.name}>{e.name}</span>
                       </td>
                       <td>
@@ -366,7 +367,7 @@ export default function Picks() {
   const cur = Math.min(page, pages);
   const pageList = list.slice((cur - 1) * PER, cur * PER);
   const top = useRef<HTMLDivElement>(null);
-  const go = (n: number) => { setPage(n); top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  const go = (n: number) => { setPage(n); top.current?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' }); };
   const ids = list.map((p) => `${market}:${p.symbol}`).join(',');
   const { quotes, status } = useQuotes(useMemo(() => (ids ? ids.split(',') : []), [ids]));
 
@@ -386,7 +387,7 @@ export default function Picks() {
         <div className="card card-pad h-64 animate-pulse" />
       ) : !data ? (
         <div className="card card-pad flex gap-4">
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand"><Info size={18} /></span>
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-ink"><Info size={18} /></span>
           <div className="text-sm leading-relaxed">
             <div className="font-semibold">{error === 'pending' ? 'Research is running for the first time' : 'Research data is unavailable'}</div>
             <p className="mt-1 text-sub">{error === 'pending' ? 'The server analyses the whole market in batches. Picks appear after the first full pass, usually within an hour.' : 'Picks come from the site’s research job on the server. Try again shortly.'}</p>
@@ -410,7 +411,7 @@ export default function Picks() {
                   <v.icon size={16} className="hidden sm:block" />
                   <span className="sm:hidden">{v.short}</span>
                   <span className="hidden sm:inline">{v.label}</span>
-                  <span className={clsx('num rounded-full px-2 py-0.5 text-xs', view === v.value ? 'bg-brand/10 text-brand' : 'bg-muted text-sub')}>{track.loading && v.value !== 'picks' ? '…' : n}</span>
+                  <span className={clsx('num rounded-full px-2 py-0.5 text-xs', view === v.value ? 'bg-brand/10 text-brand-ink' : 'bg-muted text-sub')}>{track.loading && v.value !== 'picks' ? '…' : n}</span>
                 </button>
               );
             })}
@@ -425,7 +426,7 @@ export default function Picks() {
               </select>
             </label>
           </div>
-          <p className="-mt-2 text-sm text-sub">{view === 'picks' ? horizonMeta[h].blurb : view === 'earlier' ? "Past picks that have left today's list, still tracked until their target, stop loss or window end." : 'How every pick has played out since tracking began.'}</p>
+          {view === 'picks' && <p className="-mt-2 text-sm text-sub">{horizonMeta[h].blurb}</p>}
           {view !== 'picks' ? null : data.building ? (
             <div className="card card-pad text-sm text-sub">
               <span className="font-semibold text-fg">Still building.</span> {data.coverage.history} of {data.universe} stocks have been analysed so far. Picks are held back until at least 70% are in, so the ranking is fair. Check back within the hour.
@@ -437,13 +438,13 @@ export default function Picks() {
             </div>
           ) : (
             <div className="card card-pad text-sm text-sub">
-              <span className="font-semibold text-fg">No {cap === 'All' ? '' : `${cap.toLowerCase()} cap `}{horizonMeta[h].label.toLowerCase()} pick clears the bar today.</span>{cap !== 'All' && <> <button className="font-medium text-brand hover:underline" onClick={() => setCap('All')}>Show all sizes</button>.</>} That is deliberate: a stock needs a top-decile rank, agreement across factors and no red flags. When nothing qualifies, the right trade is no trade.
+              <span className="font-semibold text-fg">No {cap === 'All' ? '' : `${cap.toLowerCase()} cap `}{horizonMeta[h].label.toLowerCase()} pick clears the bar today.</span>{cap !== 'All' && <> <button className="font-medium text-brand-ink hover:underline" onClick={() => setCap('All')}>Show all sizes</button>.</>} That is deliberate: a stock needs a top-decile rank, agreement across factors and no red flags. When nothing qualifies, the right trade is no trade.
             </div>
           )}
           {view === 'earlier' && h !== 'sw' && <EarlierPicks market={market} h={h} cap={cap} entries={track.entries} current={data.picks[h] ?? []} />}
           {view === 'track' && h !== 'sw' && <TrackRecord market={market} h={h} cap={cap} entries={track.entries} loading={track.loading} />}
           {view === 'picks' && <div className="card card-pad">
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold"><Info size={16} className="text-brand" /> How picks are made</div>
+            <div className="mb-4 flex items-center gap-2 text-sm font-semibold"><Info size={16} className="text-brand-ink" /> How picks are made</div>
             <ul className="space-y-3 text-sm leading-relaxed">
               {[
                 ['Data', 'public prices (2 years, daily), company financials and analyst estimates. No tips and no inside information: nobody can lawfully know news before it’s public.'],

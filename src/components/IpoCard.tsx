@@ -29,7 +29,7 @@ export default function IpoCard({ ipo }: { ipo: IpoView }) {
             <span className="text-xs text-sub">{ipo.type}</span>
             {ipo.live && !ipo.curated && <Badge tone="brand"><Radio size={11} /> Auto-tracked</Badge>}
           </div>
-          <h3 className="mt-2 text-base font-semibold leading-snug group-hover:text-brand">{ipo.name}</h3>
+          <h3 className="mt-2 text-base font-semibold leading-snug group-hover:text-brand-ink">{ipo.name}</h3>
           <div className="mt-0.5 text-xs text-sub">{ipo.sector ?? (ipo.live?.symbol ? `NSE: ${ipo.live.symbol}` : 'Details from exchange filings')}</div>
         </div>
         {ipo.score != null ? <ScoreRing score={ipo.score} size={54} /> : null}

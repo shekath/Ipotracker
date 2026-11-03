@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search, Star } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search, SlidersHorizontal, Star } from 'lucide-react';
 import clsx from 'clsx';
 import { stocks } from '../data';
 import { Badge, EmptyState, Segmented } from '../components/ui';
@@ -42,6 +42,7 @@ const fmtMcapRaw = (v: number | null, m: Market) => {
 export function CoverageSwitch({ value }: { value: 'all' | 'reports' }) {
   const [params, setParams] = useSearchParams();
   return (
+    <span className="flex flex-wrap items-center gap-2">
     <Segmented
       value={value}
       onChange={(v) => {
@@ -52,6 +53,8 @@ export function CoverageSwitch({ value }: { value: 'all' | 'reports' }) {
       }}
       options={[{ value: 'all', label: 'Full market' }, { value: 'reports', label: 'Analyst reports' }]}
     />
+      <Link to="/screener" className="btn-ghost border border-line md:hidden"><SlidersHorizontal size={15} /> Screener</Link>
+    </span>
   );
 }
 
@@ -183,7 +186,7 @@ export default function UniverseView() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-sm text-sub">
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span><span className="font-semibold text-fg">{filtered.length.toLocaleString('en-IN')}</span> results{data?.building ? ` · research still building (${data.coverage.history}/${data.universe})` : ''}</span>
-            {active > 0 && <button className="font-medium text-brand hover:underline" onClick={() => {
+            {active > 0 && <button className="font-medium text-brand-ink hover:underline" onClick={() => {
               const next = new URLSearchParams();
               for (const k of ['sort', 'dir']) if (params.get(k)) next.set(k, params.get(k)!);
               setParams(next, { replace: true });
@@ -222,8 +225,8 @@ export default function UniverseView() {
                   <tr key={r.symbol} className="cursor-pointer transition-colors hover:bg-muted/50" onClick={() => nav(to)}>
                     <td className="num text-xs text-sub">{(cur - 1) * PAGE + i + 1}</td>
                     <td>
-                      <Link to={to} className="font-semibold hover:text-brand" onClick={(e) => e.stopPropagation()}>{r.symbol}</Link>
-                      {rep && <Badge tone={ratingTone[rep.rating]} className="ml-2 !px-2 !text-[10px]">Report · {rep.rating}</Badge>}
+                      <Link to={to} className="font-semibold hover:text-brand-ink" onClick={(e) => e.stopPropagation()}>{r.symbol}</Link>
+                      {rep && <Badge tone={ratingTone[rep.rating]} className="ml-2 !px-2 !text-[11px]">Report · {rep.rating}</Badge>}
                       <span className="block max-w-[10rem] truncate text-xs xl:max-w-[13rem] text-sub" title={r.name}>{r.name}</span>
                     </td>
                     <td className="hidden lg:table-cell">
@@ -238,7 +241,7 @@ export default function UniverseView() {
                     <td className="hidden text-right sm:table-cell"><Score v={r.st} /></td>
                     <td className="text-right">
                       <span className="inline-flex items-center justify-end gap-1">
-                        {r.pk.map((h) => <Badge key={h} tone="up" className="!px-2 !text-[10px]">{horizonMeta[h].short}</Badge>)}
+                        {r.pk.map((h) => <Badge key={h} tone="up" className="!px-2 !text-[11px]">{horizonMeta[h].short}</Badge>)}
                         {!r.pk.length && r.setup && <span className="text-xs text-sub">{r.setup}</span>}
                         {!r.pk.length && !r.setup && <span className="text-sub">—</span>}
                         <span onClick={(e) => e.stopPropagation()}><WatchButton id={`${market}:${r.symbol}`} /></span>
@@ -253,9 +256,9 @@ export default function UniverseView() {
             <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm text-sub">
               <span className="num">{(cur - 1) * PAGE + 1}–{Math.min(cur * PAGE, filtered.length)} of {filtered.length.toLocaleString('en-IN')}</span>
               <span className="flex items-center gap-1">
-                <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:opacity-40" disabled={cur === 1} onClick={() => set('page', String(cur - 1))} aria-label="Previous page"><ChevronLeft size={16} /></button>
+                <button className="tap inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:opacity-40" disabled={cur === 1} onClick={() => set('page', String(cur - 1))} aria-label="Previous page"><ChevronLeft size={16} /></button>
                 <span className="num px-2 text-fg">{cur} / {pages}</span>
-                <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:opacity-40" disabled={cur === pages} onClick={() => set('page', String(cur + 1))} aria-label="Next page"><ChevronRight size={16} /></button>
+                <button className="tap inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:opacity-40" disabled={cur === pages} onClick={() => set('page', String(cur + 1))} aria-label="Next page"><ChevronRight size={16} /></button>
               </span>
             </div>
           )}

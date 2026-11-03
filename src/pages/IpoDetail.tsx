@@ -173,7 +173,7 @@ export default function IpoDetail() {
       ) : (
         <section className="mt-10">
           <div className="card card-pad flex gap-4">
-            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand"><Info size={18} /></span>
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-ink"><Info size={18} /></span>
             <div className="text-sm leading-relaxed">
               <div className="font-semibold">Fundamental review pending</div>
               <p className="mt-1 text-sub">

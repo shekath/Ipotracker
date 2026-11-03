@@ -4,14 +4,15 @@ import clsx from 'clsx';
 import { BarChart3, LayoutDashboard, Monitor, Moon, Rocket, SlidersHorizontal, Star, Sun, Target } from 'lucide-react';
 import { useTheme, type ThemePref } from '../lib/theme';
 
-// `short` is shown on medium screens, `mobile` in the bottom tab bar.
-const nav: { to: string; label: string; short?: string; mobile?: string; icon: typeof Rocket; end?: boolean }[] = [
+// `short` is shown on medium screens, `mobile` in the bottom tab bar. `tab: false` keeps an item out of the
+// bottom tab bar (five tabs at most); `also` lists routes that light up a tab, so Screener counts as Stocks.
+const nav: { to: string; label: string; short?: string; mobile?: string; icon: typeof Rocket; end?: boolean; tab?: false; also?: string[] }[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/picks', label: 'Picks', icon: Star },
-  { to: '/stocks', label: 'Stocks', icon: BarChart3 },
-  { to: '/screener', label: 'Screener', icon: SlidersHorizontal },
+  { to: '/stocks', label: 'Stocks', icon: BarChart3, also: ['/screener'] },
+  { to: '/screener', label: 'Screener', icon: SlidersHorizontal, tab: false },
   { to: '/ipo', label: 'IPOs', icon: Rocket },
-  { to: '/weekly-targets', label: 'Weekly Index Targets', short: 'Weekly Targets', mobile: 'Targets', icon: Target },
+  { to: '/weekly-targets', label: 'Weekly index targets', short: 'Weekly targets', mobile: 'Targets', icon: Target },
 ];
 
 function ThemeSwitch() {
@@ -31,7 +32,7 @@ function ThemeSwitch() {
           aria-label={label}
           title={label}
           onClick={() => setPref(v)}
-          className={clsx('rounded-lg p-1.5 transition-colors', pref === v ? 'bg-surface text-fg shadow-sm ring-1 ring-line' : 'text-sub hover:text-fg')}
+          className={clsx('tap rounded-lg p-1.5 transition-colors', pref === v ? 'bg-surface text-fg shadow-sm ring-1 ring-line' : 'text-sub hover:text-fg')}
         >
           <Icon size={15} />
         </button>
@@ -60,8 +61,8 @@ export default function Layout() {
   }, [pathname]);
 
   return (
-    <div className="min-h-screen pb-20 md:pb-0">
-      <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur-xl">
+    <div className="min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <header className="bar-solid sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Logo />
           <nav className="hidden items-center gap-1 md:flex">
@@ -88,14 +89,22 @@ export default function Layout() {
         </div>
       </footer>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/90 backdrop-blur-xl md:hidden" aria-label="Primary">
-        <div className="grid grid-cols-6">
-          {nav.map(({ to, label, mobile, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium', isActive ? 'text-brand' : 'text-sub')}>
-              <Icon size={20} />
-              {mobile ?? label}
-            </NavLink>
-          ))}
+      <nav className="bar-solid fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden" aria-label="Primary">
+        <div className="grid grid-cols-5">
+          {nav.filter((n) => n.tab !== false).map(({ to, label, mobile, icon: Icon, end, also }) => {
+            const on = (isActive: boolean) => isActive || !!also?.some((a) => pathname.startsWith(a));
+            return (
+              <NavLink key={to} to={to} end={end} className={({ isActive }) => clsx('flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px]', on(isActive) ? 'font-semibold text-fg' : 'font-medium text-sub')}>
+                {({ isActive }) => (
+                  <>
+                    {/* The active tab gets a filled pill behind its icon, not just a colour change. */}
+                    <span className={clsx('flex h-7 w-12 items-center justify-center rounded-full transition-colors', on(isActive) ? 'bg-brand/15 text-brand-ink' : '')}><Icon size={20} strokeWidth={on(isActive) ? 2.4 : 2} /></span>
+                    {mobile ?? label}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
       </nav>
     </div>

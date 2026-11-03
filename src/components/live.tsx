@@ -138,10 +138,10 @@ export function TimelineSteps({ t }: { t: Timeline }) {
           return (
             <li key={s.label} className="relative flex flex-col items-center text-center">
               {i > 0 && <span className={clsx('absolute right-1/2 top-3.5 hidden h-0.5 w-full sm:block', done ? 'bg-brand' : 'bg-line')} />}
-              <span className={clsx('relative z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold', done ? 'border-brand bg-brand text-white' : next ? 'border-brand bg-surface text-brand' : 'border-line bg-surface text-sub')}>
+              <span className={clsx('relative z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-bold', done ? 'border-brand-ink bg-brand-ink text-white' : next ? 'border-brand bg-surface text-brand-ink' : 'border-line bg-surface text-sub')}>
                 {done ? <Check size={14} strokeWidth={3} /> : i + 1}
               </span>
-              <span className={clsx('mt-2 text-xs font-medium', next ? 'text-brand' : done ? 'text-fg' : 'text-sub')}>{s.label}</span>
+              <span className={clsx('mt-2 text-xs font-medium', next ? 'text-brand-ink' : done ? 'text-fg' : 'text-sub')}>{s.label}</span>
               <span className="num text-xs text-sub">{fmtDate(s.date)}</span>
             </li>
           );
