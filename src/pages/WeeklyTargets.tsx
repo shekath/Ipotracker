@@ -65,8 +65,8 @@ export default function WeeklyTargets() {
 
   const item = feed?.[index];
   const def = defaultPrice(item);
-  // The latest close from the feed (the live price in market hours) is the default price; Reset goes to last week's close.
-  const feedClose = item?.current?.price ?? item?.prevDay?.close ?? NaN;
+  // The previous trading day's close is the default price (the live price stays a separate marker); Reset goes to last week's close.
+  const feedClose = item?.prevDay?.close ?? NaN;
   const loaded: Partial<Inputs> = item
     ? { ...item.prev, price: Number.isFinite(feedClose) ? feedClose : def, curClose: feedClose, wkHigh: item.current?.high ?? NaN, wkLow: item.current?.low ?? NaN }
     : {};
@@ -82,9 +82,7 @@ export default function WeeklyTargets() {
   // Back to following the feed's current close.
   const followFeed = () => { setEdits((e) => { const cur = { ...(e[index] ?? {}) }; delete cur.price; return { ...e, [index]: cur }; }); setSrcs((m) => ({ ...m, [index]: 'current' })); };
   const resetAll = () => { setEdits((e) => ({ ...e, [index]: {} })); setSrcs((m) => ({ ...m, [index]: 'current' })); };
-  const curWhen = item?.current?.marketOpen && item.current.asOf
-    ? `Live price at ${new Date(item.current.asOf).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })} IST`
-    : item?.prevDay?.date ? `Close on ${dayLabel(item.prevDay.date)}` : 'Latest close';
+  const curWhen = item?.prevDay?.date ? `Previous day's close (${dayLabel(item.prevDay.date)})` : "Previous day's close";
   // Typing the current close in Edit inputs also makes it the price the verdict uses.
   const onPanelField = (f: keyof Inputs, n: number) => { setField(f, n); if (f === 'curClose' && Number.isFinite(n)) usePrice(n, 'current'); };
 
@@ -228,6 +226,9 @@ function Hero({ name, r, s, price, def, src, weekLabel, curClose, curWhen, onPri
 }) {
   const [text, setText] = useState<string | null>(null);
   const isDef = Number.isFinite(def) && Math.abs(price - def) < 0.005;
+  // The current close keeps its name even on the day it equals last week's close (e.g. Mondays).
+  const isCur = src === 'current' && Number.isFinite(curClose) && Math.abs(price - curClose) < 0.005;
+  const kind = isCur ? 'Current close' : isDef ? 'Previous week close' : 'What-if price';
   const up = s?.bias === 'bullish', dn = s?.bias === 'bearish';
   const nt = s?.nextTarget ?? null;
   const span = nt ? Math.abs(nt.price - r.avg) : 0;
@@ -236,9 +237,9 @@ function Hero({ name, r, s, price, def, src, weekLabel, curClose, curWhen, onPri
   return (
     <section className="card grid overflow-hidden lg:grid-cols-[1fr_1.3fr_1fr]" aria-label="This week at a glance">
       <div className="grid content-start gap-2 p-5 sm:p-6">
-        <span className="label">{name} · {isDef ? 'Previous week close' : src === 'current' ? 'Current close' : 'What-if price'}</span>
+        <span className="label">{name} · {kind}</span>
         <input
-          aria-label={isDef ? 'Previous week close' : src === 'current' ? 'Current close' : 'What-if price'}
+          aria-label={kind}
           inputMode="decimal"
           className="num w-full border-0 border-b-2 border-line bg-transparent pb-1 text-[2.1rem] font-semibold tracking-tight outline-none focus:border-brand"
           value={text ?? fmt(price)}
@@ -256,10 +257,10 @@ function Hero({ name, r, s, price, def, src, weekLabel, curClose, curWhen, onPri
           )}
         </div>
         <span className="text-xs text-sub">
-          {isDef
-            ? `Last week's close${weekLabel ? ` (${weekLabel})` : ''}. Use current close to go back to today's price, or type or drag to try a price.`
-            : src === 'current'
-              ? `${curWhen}, updated automatically. Reset to use last week's close.`
+          {isCur
+            ? `${curWhen}, updated automatically.${isDef ? " Same as last week's close." : " Reset to use last week's close."}`
+            : isDef
+              ? `Last week's close${weekLabel ? ` (${weekLabel})` : ''}. Use current close to go back to the previous day's close, or type or drag to try a price.`
               : "Your what-if price. Reset to go back to last week's close."}
         </span>
       </div>
