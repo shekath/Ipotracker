@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Release signing comes from a keystore kept outside the repository:
+//   ML_KEYSTORE=/path/release.jks ML_KEYSTORE_PASSWORD=... ML_KEY_ALIAS=marketlens gradle assembleRelease
+def ks = System.getenv('ML_KEYSTORE')
+
+android {
+    namespace 'com.shekathali.stocks'
+    compileSdk 35
+    buildToolsVersion '35.0.0'
+
+    defaultConfig {
+        applicationId 'com.shekathali.stocks'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        if (ks) {
+            release {
+                storeFile file(ks)
+                storePassword System.getenv('ML_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ML_KEY_ALIAS') ?: 'marketlens'
+                keyPassword System.getenv('ML_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (ks) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
