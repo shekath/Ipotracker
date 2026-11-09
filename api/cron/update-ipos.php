@@ -20,6 +20,18 @@ if (PHP_SAPI !== 'cli') {
 
 $res = refresh_ipos(true);
 if (PHP_SAPI === 'cli') {
+    // Keep the exchange-wide screener lists warm, so visitors never wait for thousands of quotes.
+    require __DIR__ . '/../lib/screener.php';
+    @set_time_limit(300);
+    foreach (index_defs() as $id => $def) {
+        if (!in_array($def['source'] ?? '', ['nse', 'bse', 'all'], true)) continue;
+        try {
+            $s = screener($id, true);
+            $res['screener'][$id] = count($s['rows']);
+        } catch (Throwable $e) {
+            $res['screener'][$id] = 'failed: ' . $e->getMessage();
+        }
+    }
     echo json_encode($res, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), PHP_EOL;
 } else {
     json_out($res);

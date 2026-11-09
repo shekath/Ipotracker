@@ -3,6 +3,15 @@
  "fallbackAsOf": "2025",
  "indices": [
   {
+   "id": "allindia",
+   "name": "All India",
+   "market": "IN",
+   "exchange": "NSE + BSE",
+   "description": "Every stock trading in India: the NSE main board, NSE SME and the stocks listed only on BSE, refreshed daily from both exchanges so new listings appear automatically. Restricted stocks are flagged.",
+   "source": "all",
+   "fallback": []
+  },
+  {
    "id": "allin",
    "name": "All NSE",
    "market": "IN",
@@ -574,6 +583,15 @@
    "description": "Every stock on NSE Emerge, the SME platform, refreshed daily from NSE. Small, thinly traded companies: check the flags and lot sizes.",
    "source": "nse",
    "board": "sme",
+   "fallback": []
+  },
+  {
+   "id": "bseonly",
+   "name": "BSE only",
+   "market": "IN",
+   "exchange": "BSE",
+   "description": "Stocks listed on BSE but not on NSE, from BSE's daily end-of-day file. Mostly small, thinly traded companies: check the flags.",
+   "source": "bse",
    "fallback": []
   },
   {
