@@ -711,7 +711,9 @@ function research_score(string $mkt, array $rows, array $regime): array
         if (($t['turnover'] ?? INF) < ($r['market'] === 'IN' ? 5e7 : 5e6)) $flags[] = 'Thinly traded';
         $earnSoon = !empty($f['nextEarnings']) && $f['nextEarnings'] - time() < 14 * 86400;
         if ($earnSoon) $flags[] = 'Results due ' . date('j M', (int) $f['nextEarnings']);
-        $hard = array_values(array_filter($flags, fn($s) => !str_starts_with($s, 'Results due')));
+        // Suspended, non-compliant, GSM and ESM stocks never qualify; ASM and trade-for-trade are shown as warnings.
+        foreach ($r['restrict'] ?? [] as $rx) $flags[] = ($rx['level'] === 'high' ? 'Trading restriction: ' : 'Surveillance: ') . $rx['label'];
+        $hard = array_values(array_filter($flags, fn($s) => !str_starts_with($s, 'Results due') && !str_starts_with($s, 'Surveillance: ')));
 
         $picks = [];
         $atr = $t['atr'] ?? null;
@@ -859,11 +861,16 @@ function research_run(string $mkt, ?int $batch = null): array
     $k = 0;
     foreach ($mc as $id => $v) if ($v) $rank[$id] = ++$k;
 
+    // NSE trading restrictions (suspension, BZ/SZ, BE/ST, ASM / GSM / ESM) gate the picks.
+    $listed = $mkt === 'IN' ? nse_listed() : null;
+    $surv = $mkt === 'IN' ? nse_surveillance() : [];
+
     $rows = [];
     foreach ($ids as $id => $sym) {
         $q = $v7[$ymap[$id]] ?? [];
         $rows[$id] = ['symbol' => $sym, 'name' => $uni[$sym][1], 'sector' => $uni[$sym][2] ?: null, 'market' => $mkt,
-            'cap' => rs_cap_bucket($mkt, $q['mcap'] ?? null, $rank[$id] ?? null), 'idx' => $tags[$sym] ?? []] + $q;
+            'cap' => rs_cap_bucket($mkt, $q['mcap'] ?? null, $rank[$id] ?? null), 'idx' => $tags[$sym] ?? [],
+            'restrict' => $mkt === 'IN' ? nse_flags($sym, $listed['rows'][$sym] ?? null, $surv, (bool) $listed) : []] + $q;
     }
     $regime = rs_regime($mkt);
     $scored = research_score($mkt, $rows, $regime);

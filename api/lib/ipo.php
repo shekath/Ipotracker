@@ -212,11 +212,12 @@ function refresh_ipos(bool $force = false): array
         if ($bad) unset($store['ipos'][$k]);
     }
 
-    // 4. Prune issues that listed long ago.
-    $cut = date('Y-m-d', strtotime('-' . (int) cfg('ipo_keep_days', 120) . ' days'));
+    // 4. The list holds upcoming, open and closed issues, and listed ones only on their listing day:
+    //    an issue drops off the day after it lists.
+    $today = date('Y-m-d');
     foreach ($store['ipos'] as $k => $r) {
         $tl = build_timeline($r);
-        if ($tl && $tl['listing'] < $cut) unset($store['ipos'][$k]);
+        if ($tl && $tl['listing'] < $today) unset($store['ipos'][$k]);
     }
 
     $store['lastRun'] = $now;
