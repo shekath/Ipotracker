@@ -37,7 +37,8 @@ export function useScreener(def?: IndexDef) {
     });
     const load = async () => {
       try {
-        const d = await getJSON<ScreenerResult>(`screener.php?index=${def.id}`, 45000);
+        // The exchange-wide lists can take a while the very first time the server quotes them.
+        const d = await getJSON<ScreenerResult>(`screener.php?index=${def.id}`, def.source ? 110000 : 45000);
         cache.set(def.id, d);
         if (alive) setState({ data: d, loading: false, offline: !d.quoteSource });
       } catch {

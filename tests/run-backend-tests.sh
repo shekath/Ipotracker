@@ -7,7 +7,7 @@ cat > "$TMP/config.local.php" <<PHP
 <?php return [
   'data_dir' => '$TMP/data',
   'cron_token' => 'secret',
-  'upstream' => ['yahoo' => ['http://127.0.0.1:8099'], 'yahoo_cookie' => 'http://127.0.0.1:8099/fc', 'niftyindices' => 'http://127.0.0.1:8099', 'nse' => 'http://127.0.0.1:8099', 'nse_archives' => 'http://127.0.0.1:8099', 'twelvedata' => 'http://127.0.0.1:8099', 'sp500_csv' => 'http://127.0.0.1:8099/sp500.csv', 'ndx_page' => 'http://127.0.0.1:8099/ndx'],
+  'upstream' => ['yahoo' => ['http://127.0.0.1:8099'], 'yahoo_cookie' => 'http://127.0.0.1:8099/fc', 'niftyindices' => 'http://127.0.0.1:8099', 'nse' => 'http://127.0.0.1:8099', 'nse_archives' => 'http://127.0.0.1:8099', 'bse' => 'http://127.0.0.1:8099', 'twelvedata' => 'http://127.0.0.1:8099', 'sp500_csv' => 'http://127.0.0.1:8099/sp500.csv', 'ndx_page' => 'http://127.0.0.1:8099/ndx'],
   'gmp_sources' => [['name' => 'Mock GMP', 'url' => 'http://127.0.0.1:8099/gmp.html']],
 ];
 PHP
@@ -99,6 +99,18 @@ SM=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=nsesme")
 [ "$(echo "$SM" | j 'array_values(array_filter($d["rows"], fn($r)=>$r["symbol"]==="SMENEW"))[0]["price"]')" = "150" ] || fail "end-of-day price for a stock Yahoo doesn't cover yet"
 [ "$(echo "$SM" | j 'array_values(array_filter($d["rows"], fn($r)=>$r["symbol"]==="SMENEW"))[0]["listedOn"] === date("Y-m-d", strtotime("-1 day"))')" = "true" ] || fail "two-digit SME listing year"
 [ "$(fl "$SM" SMEBAD)" = '"Non-compliant (SZ)"' ] || fail "SZ flag"
+# BSE only: BSE stocks not on NSE (by ISIN), equity groups only, with BSE group flags.
+BO=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=bseonly")
+[ "$(echo "$BO" | j 'count($d["rows"])')" = "1002" ] || fail "BSE only rows: $(echo "$BO" | head -c 200)"
+[ "$(echo "$BO" | j 'count(array_filter($d["rows"], fn($r)=>in_array($r["symbol"], ["RELIANCE","BSEDEBT"])))')" = "0" ] || fail "stocks on NSE and debt rows are left out of BSE only"
+[ "$(echo "$BO" | j 'count(array_filter($d["rows"], fn($r)=>$r["price"]>0 && $r["exchange"]==="BSE"))')" = "1002" ] || fail "BSE only quotes"
+[ "$(fl "$BO" BSEZCO)" = '"Non-compliant (Z)"' ] || fail "BSE group Z flag: $(fl "$BO" BSEZCO)"
+[ "$(fl "$BO" BSETCO)" = '"Trade-to-trade (T)"' ] || fail "BSE group T flag"
+[ "$(echo "$BO" | j 'array_values(array_filter($d["rows"], fn($r)=>$r["symbol"]==="BSEZCO"))[0]["bseCode"]')" = '"500001"' ] || fail "BSE scrip code"
+# All India: NSE main board + NSE SME + BSE only, with no duplicates.
+AI=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=allindia")
+[ "$(echo "$AI" | j 'count($d["rows"])')" = "1582" ] || fail "All India rows (548 + 32 + 1002): $(echo "$AI" | head -c 200)"
+[ "$(echo "$AI" | j 'count(array_unique(array_map(fn($r)=>($r["exchange"] ?? "NSE").":".$r["symbol"], $d["rows"])))')" = "1582" ] || fail "All India has no duplicates"
 # Nifty 500 keeps the official index list; a stock missing from NSE's tradable list is flagged.
 N5=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=nifty500")
 [ "$(echo "$N5" | j '$d["constituentsSource"]')" = '"NSE Indices (official)"' ] || fail "Nifty 500 uses the index list"

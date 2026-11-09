@@ -210,3 +210,70 @@ function nse_flags(string $sym, ?array $listing, array $surv, bool $haveList): a
     foreach ($surv[$sym] ?? [] as $f) $flags[] = $f;
     return $flags;
 }
+
+/**
+ * BSE's end-of-day file: every equity that traded on BSE in the latest session, keyed by ISIN.
+ * The group code doubles as a restriction signal (T/XT/MT trade-to-trade, Z non-compliant).
+ * @return array{date:string,rows:array<string,array>}|null
+ */
+function bse_bhavcopy(): ?array
+{
+    $ck = 'bse:bhav';
+    if ($c = cache_get($ck, (int) cfg('nse_bhav_ttl', 3 * 3600))) return $c;
+    $base = cfg('upstream')['bse'] ?? 'https://www.bseindia.com';
+    $groups = array_flip(['A', 'B', 'T', 'X', 'XT', 'M', 'MT', 'MS', 'Z']); // equity groups; F, IF, P, R are debt and other instruments
+    $day = new DateTime('now', new DateTimeZone('Asia/Kolkata'));
+    for ($i = 0; $i < 8; $i++, $day->modify('-1 day')) {
+        if ((int) $day->format('N') >= 6) continue;
+        [$status, $csv] = http_get($base . '/download/BhavCopy/Equity/BhavCopy_BSE_CM_0_0_0_' . $day->format('Ymd') . '_F_0000.CSV', ['accept' => 'text/csv,*/*', 'timeout' => 30, 'headers' => ['Referer: https://www.bseindia.com/']]);
+        if ($status !== 200 || !str_starts_with($csv, 'TradDt')) continue;
+        $lines = preg_split('/\r\n|\n|\r/', trim($csv));
+        $ix = array_flip(str_getcsv(array_shift($lines)));
+        if (!isset($ix['ISIN'], $ix['TckrSymb'], $ix['SctySrs'], $ix['ClsPric'])) continue;
+        $rows = [];
+        foreach ($lines as $l) {
+            $c = str_getcsv($l);
+            $isin = $c[$ix['ISIN']] ?? '';
+            $grp = $c[$ix['SctySrs']] ?? '';
+            if (($c[$ix['FinInstrmTp']] ?? '') !== 'STK' || !str_starts_with($isin, 'INE') || !isset($groups[$grp])) continue;
+            $rows[$isin] = [
+                'symbol' => strtoupper($c[$ix['TckrSymb']]),
+                'code' => $c[$ix['FinInstrmId']] ?? null,
+                'name' => ucwords(strtolower(trim($c[$ix['FinInstrmNm']] ?? ''))),
+                'group' => $grp,
+                'close' => (float) $c[$ix['ClsPric']],
+                'prevClose' => num($c[$ix['PrvsClsgPric']] ?? null),
+                'volume' => num($c[$ix['TtlTradgVol']] ?? null),
+            ];
+        }
+        if (count($rows) < 1000) continue;
+        $out = ['date' => $day->format('Y-m-d'), 'rows' => $rows, 'at' => time()];
+        cache_set($ck, $out);
+        return $out;
+    }
+    return cache_stale($ck) ?: null;
+}
+
+/** BSE stocks that are not listed on NSE (matched by ISIN), keyed by BSE symbol. */
+function bse_only(): array
+{
+    $bse = bse_bhavcopy();
+    $nse = nse_listed();
+    if (!$bse || !$nse) return [];
+    $onNse = [];
+    foreach ($nse['rows'] as $r) if (!empty($r['isin'])) $onNse[$r['isin']] = true;
+    $out = [];
+    foreach ($bse['rows'] as $isin => $r) {
+        if (isset($onNse[$isin]) || isset($out[$r['symbol']])) continue;
+        $out[$r['symbol']] = $r + ['isin' => $isin, 'date' => $bse['date']];
+    }
+    return $out;
+}
+
+/** Restrictions BSE signals through a stock's group. */
+function bse_flags(string $group): array
+{
+    if ($group === 'Z') return [['code' => 'Z', 'label' => 'Non-compliant (Z)', 'detail' => 'BSE group Z: the company has not complied with listing requirements or investor-grievance rules. Trade-to-trade, with stricter price bands.', 'level' => 'high']];
+    if (in_array($group, ['T', 'XT', 'MT'], true)) return [['code' => $group, 'label' => "Trade-to-trade ($group)", 'detail' => 'BSE trade-to-trade group: every trade must be settled by delivery, no intraday. Usually a surveillance action.', 'level' => 'warn']];
+    return [];
+}

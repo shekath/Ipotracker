@@ -103,9 +103,10 @@ const dayShort = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString
 /** Restriction and new-listing badges under a stock's name. The reason shows on hover, or on tap via the title. */
 function RowFlags({ r }: { r: ScreenerRow }) {
   const flags = r.flags ?? [];
-  if (!flags.length && !isNew(r)) return null;
+  if (!flags.length && !isNew(r) && r.exchange !== 'BSE') return null;
   return (
     <span className="mt-1 flex flex-wrap gap-1">
+      {r.exchange === 'BSE' && <Badge tone="neutral" className="!px-2 !text-[11px]"><span title="Listed on BSE only, not on NSE">BSE{r.series ? ` · ${r.series}` : ''}</span></Badge>}
       {isNew(r) && <Badge tone="info" className="!px-2 !text-[11px]"><span title={`Listed ${dayShort(r.listedOn!)}`}>New · {dayShort(r.listedOn!)}</span></Badge>}
       {flags.map((f) => (
         <Badge key={f.label} tone={f.level === 'high' ? 'down' : 'warn'} className="!px-2 !text-[11px]">
@@ -159,7 +160,7 @@ export default function Screener() {
         ...r,
         fromHigh: r.price != null && r.high52 ? ((r.price - r.high52) / r.high52) * 100 : undefined,
         fromLow: r.price != null && r.low52 ? ((r.price - r.low52) / r.low52) * 100 : undefined,
-        research: covered.get(`${market}:${r.symbol}`),
+        research: r.exchange === 'BSE' ? undefined : covered.get(`${market}:${r.symbol}`),
       })),
     [data, covered, market],
   );
@@ -212,14 +213,19 @@ export default function Screener() {
   );
   const th = (key: SortKey, label: string) => <th className="!text-right">{sortBtn(key, label)}</th>;
 
-  const extLink = (sym: string) => (market === 'IN' ? `https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(sym)}` : `https://finance.yahoo.com/quote/${encodeURIComponent(sym.replace('.', '-'))}`);
+  const extLink = (r: ScreenerRow) =>
+    market !== 'IN'
+      ? `https://finance.yahoo.com/quote/${encodeURIComponent(r.symbol.replace('.', '-'))}`
+      : r.exchange === 'BSE'
+        ? `https://www.bseindia.com/stock-share-price/x/${encodeURIComponent(r.symbol.toLowerCase())}/${encodeURIComponent(r.bseCode ?? '')}/`
+        : `https://www.nseindia.com/get-quotes/equity?symbol=${encodeURIComponent(r.symbol)}`;
 
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Index screener</h1>
-          <p className="mt-1 text-sm text-sub">Every NSE-listed stock, updated daily so new listings appear on their own, plus the major indices, with live price, valuation, 52-week position and trading restrictions.</p>
+          <p className="mt-1 text-sm text-sub">Every stock trading in India, on NSE and BSE, updated daily so new listings appear on their own, plus the major indices, with live price, valuation, 52-week position and trading restrictions.</p>
         </div>
         <Segmented value={market} onChange={switchMarket} options={marketTabs} />
       </div>
@@ -321,7 +327,7 @@ export default function Screener() {
               {pageRows.map((r, i) => {
                 const pos = r.price != null && r.high52 && r.low52 && r.high52 > r.low52 ? ((r.price - r.low52) / (r.high52 - r.low52)) * 100 : undefined;
                 return (
-                  <tr key={r.symbol} className="group transition-colors hover:bg-muted/50">
+                  <tr key={`${r.exchange ?? 'NSE'}:${r.symbol}`} className="group transition-colors hover:bg-muted/50">
                     <td className="sticky left-0 z-10 bg-surface group-hover:bg-muted">
                       <div className="flex max-w-[15rem] items-center gap-2 sm:max-w-[20rem]">
                         <span className="num w-7 shrink-0 text-right text-xs text-sub">{offset + i + 1}</span>
@@ -329,7 +335,7 @@ export default function Screener() {
                           {r.research ? (
                             <Link to={`/stocks/${market}/${encodeURIComponent(r.symbol)}`} className="block font-semibold hover:text-brand-ink">{r.symbol}</Link>
                           ) : (
-                            <a href={extLink(r.symbol)} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-semibold hover:text-brand-ink">{r.symbol}<ExternalLink size={11} className="text-sub opacity-0 group-hover:opacity-100" /></a>
+                            <a href={extLink(r)} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-semibold hover:text-brand-ink">{r.symbol}<ExternalLink size={11} className="text-sub opacity-0 group-hover:opacity-100" /></a>
                           )}
                           <span className="block truncate text-xs text-sub">{r.name}</span>
                           <RowFlags r={r} />
@@ -370,7 +376,7 @@ export default function Screener() {
       <p className="mt-4 text-xs text-sub">Stocks with a <Badge tone="brand" className="!px-2 !text-[11px]">Research</Badge> badge have a full MarketLens analysis with targets. Others link to the exchange quote page. Valuation data from Yahoo Finance; P/E shown only when earnings are positive.</p>
       {market === 'IN' && (
         <p className="mt-2 text-xs leading-relaxed text-sub">
-          <span className="font-semibold text-fg">Restriction flags</span> come from NSE, refreshed daily: <Badge tone="down" className="!px-2 !text-[11px]">Non-compliant</Badge> BZ/SZ series for breaching listing rules, <Badge tone="warn" className="!px-2 !text-[11px]">Trade-for-trade</Badge> BE/ST series (delivery only, no intraday), the ASM, GSM and ESM surveillance stages that SEBI and the exchanges apply jointly, and <Badge tone="down" className="!px-2 !text-[11px]">Not trading</Badge> for stocks missing from NSE's tradable list (suspended or delisted). Tap or hover a flag for the reason.
+          <span className="font-semibold text-fg">Restriction flags</span> come from NSE, refreshed daily: <Badge tone="down" className="!px-2 !text-[11px]">Non-compliant</Badge> BZ/SZ series for breaching listing rules, <Badge tone="warn" className="!px-2 !text-[11px]">Trade-for-trade</Badge> BE/ST series (delivery only, no intraday), the ASM, GSM and ESM surveillance stages that SEBI and the exchanges apply jointly, and <Badge tone="down" className="!px-2 !text-[11px]">Not trading</Badge> for stocks missing from NSE's tradable list (suspended or delisted). For stocks listed only on BSE, BSE's groups give the flags: Z (non-compliant) and T, XT, MT (trade-to-trade). Tap or hover a flag for the reason.
         </p>
       )}
     </div>

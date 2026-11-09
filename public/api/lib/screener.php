@@ -33,16 +33,27 @@ function parse_constituent_csv(string $csv): array
     return $rows;
 }
 
-/** @return array{rows:array,source:string} */
+/**
+ * Rows are [symbol, name, industry, exchange?]; exchange defaults to NSE.
+ * @return array{rows:array,source:string}
+ */
 function index_constituents(array $def): array
 {
-    if (($def['source'] ?? '') === 'nse') {
-        // The complete NSE list for this board; falls back to the index lists if NSE is unreachable.
+    $src = $def['source'] ?? '';
+    if ($src === 'nse' || $src === 'bse' || $src === 'all') {
+        // The complete exchange lists, refreshed daily; falls back to the index lists if NSE is unreachable.
         $l = nse_listed();
         $rows = [];
-        foreach ($l['rows'] ?? [] as $r) if ($r['board'] === ($def['board'] ?? 'main')) $rows[] = [$r['symbol'], $r['name'], null];
-        if ($rows) return ['rows' => $rows, 'source' => $l['source']];
-        if (($def['board'] ?? 'main') === 'sme') return ['rows' => [], 'source' => 'NSE list unavailable'];
+        $boards = $src === 'all' ? ['main', 'sme'] : ($src === 'nse' ? [$def['board'] ?? 'main'] : []);
+        foreach ($l['rows'] ?? [] as $r) if (in_array($r['board'], $boards, true)) $rows[] = [$r['symbol'], $r['name'], null, 'NSE'];
+        $parts = $rows ? [$l['source']] : [];
+        if ($src !== 'nse') {
+            $bse = bse_only();
+            foreach ($bse as $r) $rows[] = [$r['symbol'], $r['name'], null, 'BSE'];
+            if ($bse) $parts[] = 'BSE end-of-day list (stocks not on NSE)';
+        }
+        if ($rows) return ['rows' => $rows, 'source' => implode(' + ', $parts)];
+        if ($src !== 'nse' || ($def['board'] ?? 'main') === 'sme') return ['rows' => [], 'source' => 'Exchange lists unavailable'];
     }
     if (!empty($def['union'])) return union_constituents($def);
     return single_constituents($def);
@@ -152,48 +163,66 @@ function yahoo_v7_quotes(array $ysyms): array
     return $out;
 }
 
-function screener(string $id): array
+function screener(string $id, bool $fresh = false): array
 {
     $defs = index_defs();
     if (!isset($defs[$id])) throw new InvalidArgumentException('Unknown index');
     $def = $defs[$id];
     $ck = "scr:$id";
-    $big = ($def['source'] ?? '') === 'nse';
-    if ($c = cache_get($ck, $big ? (int) cfg('screener_full_ttl', 600) : (int) cfg('screener_ttl', 120))) return $c;
+    $big = in_array($def['source'] ?? '', ['nse', 'bse', 'all'], true);
+    if (!$fresh && ($c = cache_get($ck, $big ? (int) cfg('screener_full_ttl', 600) : (int) cfg('screener_ttl', 120)))) return $c;
 
     $cons = index_constituents($def);
     $mkt = $def['market'];
-    $ids = [];
-    foreach ($cons['rows'] as [$sym]) $ids[] = "$mkt:$sym";
-    $ids = array_values(array_filter($ids, fn($x) => yahoo_symbol($x) !== null));
-
+    // Yahoo symbol per row: SYM.NS for NSE, SYM.BO for BSE-only stocks, the plain ticker in the US.
+    $ysym = function (string $sym, string $ex) use ($mkt): ?string {
+        if ($mkt === 'IN' && $ex === 'BSE') return preg_match('/^[A-Z0-9&.\-]{1,20}$/', $sym) ? "$sym.BO" : null;
+        return yahoo_symbol("$mkt:$sym");
+    };
     $ymap = [];
-    foreach ($ids as $x) $ymap[$x] = yahoo_symbol($x);
-    $v7 = yahoo_v7_quotes(array_values($ymap));
+    foreach ($cons['rows'] as $r) {
+        $y = $ysym($r[0], $r[3] ?? 'NSE');
+        if ($y !== null) $ymap[($r[3] ?? 'NSE') . ':' . $r[0]] = $y;
+    }
+    $v7 = yahoo_v7_quotes(array_values(array_unique($ymap)));
     $source = $v7 ? 'Yahoo Finance (quote)' : null;
 
-    // Anything v7 missed: NSE's end-of-day price first (it covers brand-new and SME listings),
-    // then the chart endpoint for the few still missing.
+    // Anything v7 missed: the exchange's end-of-day price first (it covers brand-new, SME and
+    // thinly traded stocks), then the chart endpoint for the few still missing.
     $listed = $mkt === 'IN' ? nse_listed() : null;
     $surv = $mkt === 'IN' ? nse_surveillance() : [];
     $bhav = $mkt === 'IN' ? nse_bhavcopy() : null;
-    $missing = array_values(array_filter($ids, fn($x) => !isset($v7[$ymap[$x]]) && !isset($bhav['rows'][substr($x, 3)])));
+    $bse = $mkt === 'IN' && in_array($def['source'] ?? '', ['bse', 'all'], true) ? bse_only() : [];
+    $missing = [];
+    foreach ($cons['rows'] as $r) {
+        $ex = $r[3] ?? 'NSE';
+        $k = "$ex:{$r[0]}";
+        if (!isset($ymap[$k]) || isset($v7[$ymap[$k]])) continue;
+        if ($ex === 'NSE' && !isset($bhav['rows'][$r[0]])) $missing[] = "$mkt:{$r[0]}";
+    }
     $chart = $missing && count($missing) <= 80 ? get_quotes($missing)['quotes'] : [];
     if (!$source && $chart) $source = 'Yahoo Finance (chart)';
 
+    $eod = fn(array $b, string $date) => ['price' => $b['close'], 'changePct' => $b['prevClose'] ? round(($b['close'] / $b['prevClose'] - 1) * 100, 2) : null, 'mcap' => null, 'pe' => null, 'fpe' => null, 'pb' => null, 'divYield' => null, 'high52' => null, 'low52' => null, 'volume' => $b['volume'], 'marketOpen' => false, 'priceDate' => $date];
     $rows = [];
-    foreach ($cons['rows'] as [$sym, $name, $industry]) {
-        $x = "$mkt:$sym";
-        $q = isset($ymap[$x]) ? ($v7[$ymap[$x]] ?? null) : null;
-        if (!$q && isset($bhav['rows'][$sym])) {
-            $b = $bhav['rows'][$sym];
-            $q = ['price' => $b['close'], 'changePct' => $b['prevClose'] ? round(($b['close'] / $b['prevClose'] - 1) * 100, 2) : null, 'mcap' => null, 'pe' => null, 'fpe' => null, 'pb' => null, 'divYield' => null, 'high52' => null, 'low52' => null, 'volume' => $b['volume'], 'marketOpen' => false, 'priceDate' => $bhav['date']];
-        } elseif (!$q && isset($chart[$x])) {
-            $c = $chart[$x];
+    foreach ($cons['rows'] as $r) {
+        [$sym, $name, $industry] = $r;
+        $ex = $r[3] ?? 'NSE';
+        $k = "$ex:$sym";
+        $q = isset($ymap[$k]) ? ($v7[$ymap[$k]] ?? null) : null;
+        if (!$q && $ex === 'BSE' && isset($bse[$sym])) {
+            $q = $eod($bse[$sym], $bse[$sym]['date']);
+        } elseif (!$q && $ex === 'NSE' && isset($bhav['rows'][$sym])) {
+            $q = $eod($bhav['rows'][$sym], $bhav['date']);
+        } elseif (!$q && isset($chart["$mkt:$sym"])) {
+            $c = $chart["$mkt:$sym"];
             $q = ['price' => $c['price'], 'changePct' => $c['changePct'], 'mcap' => null, 'pe' => null, 'fpe' => null, 'pb' => null, 'divYield' => null, 'high52' => $c['high52'], 'low52' => $c['low52'], 'volume' => $c['volume'], 'marketOpen' => $c['marketOpen']];
         }
         $row = ['symbol' => $sym, 'name' => $name, 'industry' => $industry ?: null] + ($q ?? ['price' => null]);
-        if ($mkt === 'IN') {
+        if ($mkt === 'IN' && $ex === 'BSE') {
+            $b = $bse[$sym] ?? null;
+            $row += ['exchange' => 'BSE', 'bseCode' => $b['code'] ?? null, 'series' => $b['group'] ?? null, 'listedOn' => null, 'flags' => bse_flags($b['group'] ?? '')];
+        } elseif ($mkt === 'IN') {
             $li = $listed['rows'][$sym] ?? null;
             $row['series'] = $li['series'] ?? null;
             $row['listedOn'] = $li['listedOn'] ?? null;
@@ -201,7 +230,7 @@ function screener(string $id): array
         }
         $rows[] = $row;
     }
-    if (!$source && $bhav) $source = 'NSE end-of-day prices';
+    if (!$source && ($bhav || $bse)) $source = 'Exchange end-of-day prices';
     $out = [
         'id' => $id,
         'asOf' => time(),

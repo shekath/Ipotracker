@@ -59,6 +59,7 @@ $config = [
         'niftyindices' => 'https://www.niftyindices.com',
         'nse' => 'https://www.nseindia.com',
         'nse_archives' => 'https://nsearchives.nseindia.com',
+        'bse' => 'https://www.bseindia.com',
         'twelvedata' => 'https://api.twelvedata.com',
         'sp500_csv' => 'https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv',
         'ndx_page' => 'https://en.wikipedia.org/wiki/Nasdaq-100',

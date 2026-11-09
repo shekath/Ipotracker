@@ -195,7 +195,7 @@ export interface IndexDef {
   fallback: [string, string, string | null][] | null;
   fallbackNote?: string;
   /** "nse": the complete NSE list for `board`, refreshed daily on the server. */
-  source?: 'nse';
+  source?: 'nse' | 'bse' | 'all';
   board?: 'main' | 'sme';
 }
 
@@ -227,6 +227,9 @@ export interface ScreenerRow {
   series?: string | null;
   listedOn?: string | null;
   flags?: TradeFlag[];
+  /** Set for stocks listed only on BSE (with BSE's scrip code); NSE otherwise. */
+  exchange?: 'BSE';
+  bseCode?: string | null;
 }
 
 export interface ScreenerResult {

@@ -187,6 +187,21 @@ if (preg_match('#^/content/cm/BhavCopy_NSE_CM_0_0_0_(\d{8})_F_0000\.csv\.zip$#',
     unlink($tmp);
     exit;
 }
+// BSE end-of-day file: a stock also on NSE (same ISIN), BSE-only stocks incl. groups Z and T, and a debt row.
+if (preg_match('#^/download/BhavCopy/Equity/BhavCopy_BSE_CM_0_0_0_(\d{8})_F_0000\.CSV$#', $path, $m)) {
+    $last = strtotime('-1 day');
+    while ((int) date('N', $last) >= 6) $last -= 86400;
+    if ($m[1] !== date('Ymd', $last)) { http_response_code(404); echo 'not found'; exit; }
+    header('Content-Type: text/csv');
+    echo "TradDt,BizDt,Sgmt,Src,FinInstrmTp,FinInstrmId,ISIN,TckrSymb,SctySrs,XpryDt,FininstrmActlXpryDt,StrkPric,OptnTp,FinInstrmNm,OpnPric,HghPric,LwPric,ClsPric,LastPric,PrvsClsgPric,UndrlygPric,SttlmPric,OpnIntrst,ChngInOpnIntrst,TtlTradgVol,TtlTrfVal,TtlNbOfTxsExctd,SsnId,NewBrdLotQty,Rmks,Rsvd1,Rsvd2,Rsvd3,Rsvd4\n";
+    $line = fn($code, $isin, $sym, $grp, $name, $cls) => "x,x,CM,BSE,STK,$code,$isin,$sym,$grp,,,,,$name,$cls,$cls,$cls,$cls,$cls,$cls,,$cls,,,100,1,1,F1,1,,,,,\n";
+    echo $line(500325, 'INE000000000', 'RELIANCE', 'A', 'RELIANCE INDUSTRIES LTD.', 1300);
+    echo $line(500001, 'INEB00000Z01', 'BSEZCO', 'Z', 'BSE Z GROUP LTD.', 12);
+    echo $line(500002, 'INEB00000T01', 'BSETCO', 'T', 'BSE T GROUP LTD.', 34);
+    echo $line(500003, 'INEB00000F01', 'BSEDEBT', 'F', 'SOME BOND 2030', 1000);
+    for ($i = 1; $i <= 1000; $i++) echo $line(600000 + $i, sprintf('INEB%07d01', $i), "BSEF$i", 'X', "BSE FILLER $i LTD.", 10 + $i % 50);
+    exit;
+}
 // NSE surveillance reports (served without the session cookie, like the real site).
 if ($path === '/api/reportASM') {
     echo json_encode(['longterm' => ['data' => [['symbol' => 'TOTAL3', 'asmSurvIndicator' => 'Stage I', 'survDesc' => 'Long Term Additional Surveillance Measure (LTASM) - Stage I']]], 'shortterm' => ['data' => []]]); exit;
