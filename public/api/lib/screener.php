@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/quotes.php';
+require_once __DIR__ . '/nse_list.php';
 
 function index_defs(): array
 {
@@ -35,6 +36,14 @@ function parse_constituent_csv(string $csv): array
 /** @return array{rows:array,source:string} */
 function index_constituents(array $def): array
 {
+    if (($def['source'] ?? '') === 'nse') {
+        // The complete NSE list for this board; falls back to the index lists if NSE is unreachable.
+        $l = nse_listed();
+        $rows = [];
+        foreach ($l['rows'] ?? [] as $r) if ($r['board'] === ($def['board'] ?? 'main')) $rows[] = [$r['symbol'], $r['name'], null];
+        if ($rows) return ['rows' => $rows, 'source' => $l['source']];
+        if (($def['board'] ?? 'main') === 'sme') return ['rows' => [], 'source' => 'NSE list unavailable'];
+    }
     if (!empty($def['union'])) return union_constituents($def);
     return single_constituents($def);
 }
@@ -107,18 +116,21 @@ function yahoo_v7_quotes(array $ysyms): array
     if (!$crumb) return [];
     $jar = data_path('cache/yahoo-cookies.txt');
     $out = [];
-    foreach (array_chunk($ysyms, 50) as $i => $chunk) {
-        $q = http_build_query(['symbols' => implode(',', $chunk), 'crumb' => $crumb]);
-        $host = cfg('upstream')['yahoo'][0];
-        [$status, $body] = http_get("$host/v7/finance/quote?$q", ['cookie_jar' => $jar]);
-        if ($status === 401 && $i === 0) {
-            // Crumb expired: refresh once.
-            $crumb = yahoo_crumb(true);
-            if (!$crumb) return $out;
-            $q = http_build_query(['symbols' => implode(',', $chunk), 'crumb' => $crumb]);
-            [$status, $body] = http_get("$host/v7/finance/quote?$q", ['cookie_jar' => $jar]);
-        }
-        if ($status !== 200) continue;
+    $host = cfg('upstream')['yahoo'][0];
+    $url = fn(array $chunk) => "$host/v7/finance/quote?" . http_build_query(['symbols' => implode(',', $chunk), 'crumb' => $crumb]);
+    $chunks = array_chunk($ysyms, 50);
+    if (!$chunks) return $out;
+    // First batch on its own, to refresh an expired crumb once; the rest in parallel.
+    [$status, $body] = http_get($url($chunks[0]), ['cookie_jar' => $jar]);
+    if ($status === 401) {
+        $crumb = yahoo_crumb(true);
+        if (!$crumb) return $out;
+        [$status, $body] = http_get($url($chunks[0]), ['cookie_jar' => $jar]);
+    }
+    $bodies = [$status === 200 ? $body : ''];
+    $rest = array_map($url, array_slice($chunks, 1));
+    foreach (http_multi($rest, ['cookie_jar' => $jar], 6) as [$st, $b]) $bodies[] = $st === 200 ? $b : '';
+    foreach ($bodies as $body) {
         foreach ((json_decode($body, true) ?: [])['quoteResponse']['result'] ?? [] as $r) {
             if (!isset($r['symbol'], $r['regularMarketPrice'])) continue;
             $dy = $r['dividendYield'] ?? (isset($r['trailingAnnualDividendYield']) ? $r['trailingAnnualDividendYield'] * 100 : null);
@@ -146,7 +158,8 @@ function screener(string $id): array
     if (!isset($defs[$id])) throw new InvalidArgumentException('Unknown index');
     $def = $defs[$id];
     $ck = "scr:$id";
-    if ($c = cache_get($ck, (int) cfg('screener_ttl', 120))) return $c;
+    $big = ($def['source'] ?? '') === 'nse';
+    if ($c = cache_get($ck, $big ? (int) cfg('screener_full_ttl', 600) : (int) cfg('screener_ttl', 120))) return $c;
 
     $cons = index_constituents($def);
     $mkt = $def['market'];
@@ -159,26 +172,42 @@ function screener(string $id): array
     $v7 = yahoo_v7_quotes(array_values($ymap));
     $source = $v7 ? 'Yahoo Finance (quote)' : null;
 
-    // Fill anything v7 missed from the chart endpoint (price + 52W only).
-    $missing = array_values(array_filter($ids, fn($x) => !isset($v7[$ymap[$x]])));
-    $chart = $missing ? get_quotes($missing)['quotes'] : [];
+    // Anything v7 missed: NSE's end-of-day price first (it covers brand-new and SME listings),
+    // then the chart endpoint for the few still missing.
+    $listed = $mkt === 'IN' ? nse_listed() : null;
+    $surv = $mkt === 'IN' ? nse_surveillance() : [];
+    $bhav = $mkt === 'IN' ? nse_bhavcopy() : null;
+    $missing = array_values(array_filter($ids, fn($x) => !isset($v7[$ymap[$x]]) && !isset($bhav['rows'][substr($x, 3)])));
+    $chart = $missing && count($missing) <= 80 ? get_quotes($missing)['quotes'] : [];
     if (!$source && $chart) $source = 'Yahoo Finance (chart)';
 
     $rows = [];
     foreach ($cons['rows'] as [$sym, $name, $industry]) {
         $x = "$mkt:$sym";
         $q = isset($ymap[$x]) ? ($v7[$ymap[$x]] ?? null) : null;
-        if (!$q && isset($chart[$x])) {
+        if (!$q && isset($bhav['rows'][$sym])) {
+            $b = $bhav['rows'][$sym];
+            $q = ['price' => $b['close'], 'changePct' => $b['prevClose'] ? round(($b['close'] / $b['prevClose'] - 1) * 100, 2) : null, 'mcap' => null, 'pe' => null, 'fpe' => null, 'pb' => null, 'divYield' => null, 'high52' => null, 'low52' => null, 'volume' => $b['volume'], 'marketOpen' => false, 'priceDate' => $bhav['date']];
+        } elseif (!$q && isset($chart[$x])) {
             $c = $chart[$x];
             $q = ['price' => $c['price'], 'changePct' => $c['changePct'], 'mcap' => null, 'pe' => null, 'fpe' => null, 'pb' => null, 'divYield' => null, 'high52' => $c['high52'], 'low52' => $c['low52'], 'volume' => $c['volume'], 'marketOpen' => $c['marketOpen']];
         }
-        $rows[] = ['symbol' => $sym, 'name' => $name, 'industry' => $industry ?: null] + ($q ?? ['price' => null]);
+        $row = ['symbol' => $sym, 'name' => $name, 'industry' => $industry ?: null] + ($q ?? ['price' => null]);
+        if ($mkt === 'IN') {
+            $li = $listed['rows'][$sym] ?? null;
+            $row['series'] = $li['series'] ?? null;
+            $row['listedOn'] = $li['listedOn'] ?? null;
+            $row['flags'] = nse_flags($sym, $li, $surv, (bool) $listed);
+        }
+        $rows[] = $row;
     }
+    if (!$source && $bhav) $source = 'NSE end-of-day prices';
     $out = [
         'id' => $id,
         'asOf' => time(),
         'constituentsSource' => $cons['source'],
         'quoteSource' => $source,
+        'eodDate' => $bhav['date'] ?? null,
         'rows' => $rows,
     ];
     if ($source) cache_set($ck, $out);

@@ -19,7 +19,6 @@ $config = [
 
     // IPO tracker
     'ipo_refresh_minutes' => 20,  // if no cron job ran within this window, refresh on request
-    'ipo_keep_days' => 120,       // drop IPOs that listed more than N days ago
     'cron_token' => '',           // set to allow https://site/api/cron/update-ipos.php?token=...
     // NSE equity trading holidays (weekdays only). Used for IPO T+3 timeline estimates and to find
     // the last trading day of each week for the weekly index targets. Extend each year.
@@ -40,6 +39,10 @@ $config = [
     // Upstream hosts (overridable for testing against mocks).
     // Screener
     'screener_ttl' => 120,         // seconds index quotes are cached
+    'screener_full_ttl' => 600,    // the same for the complete NSE lists (thousands of stocks)
+    'nse_list_ttl' => 21600,       // NSE's listed-securities files: new listings show up within 6 hours
+    'nse_surveillance_ttl' => 10800, // ASM / GSM / ESM surveillance lists
+    'nse_bhav_ttl' => 10800,       // end-of-day prices (fallback for stocks Yahoo doesn't cover yet)
     'constituents_ttl' => 86400,   // index member lists change only at rebalancing
 
     // Quant research (cron/update-research.php)
@@ -55,6 +58,7 @@ $config = [
         'yahoo_cookie' => 'https://fc.yahoo.com',
         'niftyindices' => 'https://www.niftyindices.com',
         'nse' => 'https://www.nseindia.com',
+        'nse_archives' => 'https://nsearchives.nseindia.com',
         'twelvedata' => 'https://api.twelvedata.com',
         'sp500_csv' => 'https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv',
         'ndx_page' => 'https://en.wikipedia.org/wiki/Nasdaq-100',

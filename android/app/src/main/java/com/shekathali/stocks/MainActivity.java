@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true); // theme, watchlist and market choice live in localStorage
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " MarketLensApp/1.0");
+        s.setUserAgentString(s.getUserAgentString() + " MarketLensApp/1.1");
 
         web.setWebViewClient(new WebViewClient() {
             @Override

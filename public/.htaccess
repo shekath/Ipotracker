@@ -12,6 +12,15 @@ DirectoryIndex index.html index.php
   # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>
 
+# The Android app: right content type, and download rather than display.
+AddType application/vnd.android.package-archive .apk
+<FilesMatch "\.apk$">
+  <IfModule mod_headers.c>
+    Header set Content-Disposition "attachment; filename=MarketLens.apk"
+    Header set Cache-Control "no-cache"
+  </IfModule>
+</FilesMatch>
+
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
 </IfModule>

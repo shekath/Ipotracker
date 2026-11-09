@@ -112,7 +112,7 @@ if ($path === '/v7/finance/quote') {
     if (($q['crumb'] ?? '') !== 'mockcrumb' || empty($_COOKIE['A3'])) { http_response_code(401); echo '{"finance":{"error":"Invalid Crumb"}}'; exit; }
     $res = [];
     foreach (explode(',', $q['symbols']) as $sym) {
-        if ($sym === 'NOV7.NS') continue; // simulate a symbol v7 misses -> chart fallback
+        if ($sym === 'NOV7.NS' || $sym === 'SMENEW.NS') continue; // symbols v7 misses -> chart / NSE end-of-day fallback
         $base = 100 + (crc32($sym) % 900);
         $res[] = ['symbol' => $sym, 'regularMarketPrice' => $base * 1.01, 'regularMarketChangePercent' => (crc32($sym) % 7) - 3.0,
             'marketCap' => $base * 1e10, 'trailingPE' => 10 + crc32($sym) % 40, 'forwardPE' => 9 + crc32($sym) % 30, 'priceToBook' => 1 + (crc32($sym) % 90) / 10,
@@ -142,6 +142,57 @@ if (preg_match('#^/IndexConstituent/(.+)\.csv$#', $path, $m)) {
     }
     exit;
 }
+
+// NSE archives: listed securities (main board and SME) and the end-of-day bhavcopy.
+// Main board: every research-universe stock, plus restricted and filler stocks (>= 500 rows like the real file).
+$mainList = function () {
+    $rows = [['RELIANCE', 'Reliance Industries Limited', 'EQ', '29-NOV-1995'], ['HDFCBANK', 'HDFC Bank Limited', 'EQ', '08-NOV-1995'], ['INFY', 'Infosys Limited', 'EQ', '08-FEB-1995'],
+        ['NODATA', 'No Data Limited', 'EQ', '01-JAN-2010'], ['BADCO', 'Bad Compliance Limited', 'BZ', '01-JAN-2005'], ['TFTCO', 'Trade For Trade Limited', 'BE', '01-JAN-2012'],
+        ['GSMCO', 'Graded Surveillance Limited', 'EQ', '01-JAN-2015'], ['NEWMAIN', 'New Mainboard Limited', 'EQ', strtoupper(date('d-M-Y', strtotime('-3 days')))]];
+    for ($i = 1; $i <= 120; $i++) $rows[] = ["TOTAL$i", "Total Co $i Limited", 'EQ', '01-JAN-2010'];
+    for ($i = 1; $i <= 420; $i++) $rows[] = ["MAIN$i", "Main Co $i Limited", 'EQ', '01-JAN-2000'];
+    return $rows;
+};
+if ($path === '/content/equities/EQUITY_L.csv') {
+    header('Content-Type: text/csv');
+    echo "SYMBOL,NAME OF COMPANY, SERIES, DATE OF LISTING, PAID UP VALUE, MARKET LOT, ISIN NUMBER, FACE VALUE\n";
+    foreach ($mainList() as $r) echo "{$r[0]},{$r[1]},{$r[2]},{$r[3]},10,1,INE000000000,10\n";
+    exit;
+}
+if ($path === '/emerge/corporates/content/SME_EQUITY_L.csv') {
+    header('Content-Type: text/csv');
+    echo "SYMBOL,NAME_OF_COMPANY,SERIES,DATE_OF_LISTING,PAID_UP_VALUE,ISIN_NUMBER,FACE_VALUE,\n";
+    echo 'SMENEW,SME New Listing Limited,ST,' . date('d-M-y', strtotime('-1 day')) . ",10,INE000000000,10,\n";
+    echo "SMEBAD,SME Non Compliant Limited,SZ,01-Jan-20,10,INE000000000,10,\n";
+    for ($i = 1; $i <= 30; $i++) echo "SME$i,SME Co $i Limited,SM,01-Jan-22,10,INE000000000,10,\n";
+    exit;
+}
+if (preg_match('#^/content/cm/BhavCopy_NSE_CM_0_0_0_(\d{8})_F_0000\.csv\.zip$#', $path, $m)) {
+    // Only the most recent weekday is published (today's file appears in the evening).
+    $last = strtotime('-1 day');
+    while ((int) date('N', $last) >= 6) $last -= 86400;
+    if ($m[1] !== date('Ymd', $last)) { http_response_code(404); echo 'not found'; exit; }
+    $csv = "TradDt,BizDt,Sgmt,Src,FinInstrmTp,FinInstrmId,ISIN,TckrSymb,SctySrs,XpryDt,FininstrmActlXpryDt,StrkPric,OptnTp,FinInstrmNm,OpnPric,HghPric,LwPric,ClsPric,LastPric,PrvsClsgPric,UndrlygPric,SttlmPric,OpnIntrst,ChngInOpnIntrst,TtlTradgVol,TtlTrfVal,TtlNbOfTxsExctd,SsnId,NewBrdLotQty,Rmks,Rsvd1,Rsvd2,Rsvd3,Rsvd4\n";
+    $line = fn($sym, $ser, $cls, $prev) => "x,x,CM,NSE,STK,1,INE000000000,$sym,$ser,,,,,$sym LTD,$cls,$cls,$cls,$cls,$cls,$prev,,$cls,,,5000,1,1,F1,1,,,,,\n";
+    foreach ($mainList() as $r) $csv .= $line($r[0], $r[2], 100, 98);
+    $csv .= $line('SMENEW', 'ST', 150, 120);
+    $csv .= "x,x,CM,NSE,STK,1,IN0020200104,SGBJUN28,GB,,,,,GOLDBOND,1,1,1,1,1,1,,1,,,1,1,1,F1,1,,,,,\n";
+    $tmp = tempnam(sys_get_temp_dir(), 'bhav');
+    $z = new ZipArchive();
+    $z->open($tmp, ZipArchive::OVERWRITE);
+    $z->addFromString(substr(basename($path), 0, -4), $csv);
+    $z->close();
+    header('Content-Type: application/zip');
+    readfile($tmp);
+    unlink($tmp);
+    exit;
+}
+// NSE surveillance reports (served without the session cookie, like the real site).
+if ($path === '/api/reportASM') {
+    echo json_encode(['longterm' => ['data' => [['symbol' => 'TOTAL3', 'asmSurvIndicator' => 'Stage I', 'survDesc' => 'Long Term Additional Surveillance Measure (LTASM) - Stage I']]], 'shortterm' => ['data' => []]]); exit;
+}
+if ($path === '/api/reportGSM') { echo json_encode([['symbol' => 'GSMCO', 'gsmStage' => 'II', 'survDesc' => 'Graded Surveillance Measure Stage II']]); exit; }
+if ($path === '/api/reportESM') { echo json_encode([['symbol' => 'TFTCO', 'esmSurvIndicator' => 'Stage I', 'survDesc' => 'Enhanced Surveillance Measure (ESM) - Stage I']]); exit; }
 
 // NSE: home sets the session cookie; APIs refuse requests without it.
 if ($path === '/') { setcookie('nsit', 'abc', 0, '/'); header('Content-Type: text/html'); echo '<html>NSE</html>'; exit; }

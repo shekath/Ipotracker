@@ -1,7 +1,7 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import clsx from 'clsx';
-import { BarChart3, LayoutDashboard, Monitor, Moon, Rocket, SlidersHorizontal, Star, Sun, Target } from 'lucide-react';
+import { BarChart3, LayoutDashboard, Monitor, Moon, Rocket, SlidersHorizontal, Smartphone, Star, Sun, Target } from 'lucide-react';
 import { useTheme, type ThemePref } from '../lib/theme';
 
 // `short` is shown on medium screens, `mobile` in the bottom tab bar. `tab: false` keeps an item out of the
@@ -14,6 +14,8 @@ const nav: { to: string; label: string; short?: string; mobile?: string; icon: t
   { to: '/ipo', label: 'IPOs', icon: Rocket },
   { to: '/weekly-targets', label: 'Weekly index targets', short: 'Weekly targets', mobile: 'Targets', icon: Target },
 ];
+
+const inApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('MarketLensApp');
 
 function ThemeSwitch() {
   const { pref, setPref } = useTheme();
@@ -85,7 +87,15 @@ export default function Layout() {
           <p className="max-w-4xl">
             <strong className="text-fg">Disclaimer:</strong> MarketLens is an educational research tool, not investment advice. MarketLens is not a SEBI-registered investment adviser or research analyst, nor a US-registered adviser. Prices, financials and targets come from a point-in-time research snapshot and may differ from live market data. Grey-market premium (GMP) figures are unofficial. Verify with exchange filings / RHPs and consult a registered adviser before investing.
           </p>
-          <p className="mt-3">© {new Date().getFullYear()} MarketLens</p>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p>© {new Date().getFullYear()} MarketLens</p>
+            {/* Hidden inside the Android app itself (its user agent carries MarketLensApp). */}
+            {!inApp && (
+              <a href="./download/MarketLens.apk" download className="btn-ghost border border-line text-fg">
+                <Smartphone size={15} /> Get the Android app <span className="text-sub">APK · v1.1</span>
+              </a>
+            )}
+          </div>
         </div>
       </footer>
 

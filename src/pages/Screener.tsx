@@ -13,7 +13,9 @@ import type { Market, ScreenerRow } from '../types';
 import { scrollBehavior } from '../lib/motion';
 
 type SortKey = 'name' | 'price' | 'changePct' | 'mcap' | 'pe' | 'pb' | 'divYield' | 'fromHigh';
-type Preset = 'all' | 'gainers' | 'losers' | 'nearHigh' | 'nearLow' | 'value' | 'dividend' | 'covered';
+type Preset = 'all' | 'gainers' | 'losers' | 'nearHigh' | 'nearLow' | 'value' | 'dividend' | 'covered' | 'new' | 'restricted' | 'clean';
+const NEW_DAYS = 30;
+const isNew = (r: ScreenerRow) => !!r.listedOn && Date.now() - new Date(r.listedOn + 'T00:00:00').getTime() <= NEW_DAYS * 86400000;
 
 const presets: { value: Preset; label: string; test: (r: ScreenerRow & { fromHigh?: number; fromLow?: number }) => boolean }[] = [
   { value: 'all', label: 'All stocks', test: () => true },
@@ -24,6 +26,9 @@ const presets: { value: Preset; label: string; test: (r: ScreenerRow & { fromHig
   { value: 'value', label: 'Value (P/E < 20)', test: (r) => r.pe != null && r.pe > 0 && r.pe < 20 },
   { value: 'dividend', label: 'Dividend yield > 2%', test: (r) => (r.divYield ?? 0) > 2 },
   { value: 'covered', label: 'MarketLens research', test: () => true },
+  { value: 'new', label: `New listings (${NEW_DAYS} days)`, test: isNew },
+  { value: 'restricted', label: 'Restricted / surveillance', test: (r) => !!r.flags?.length },
+  { value: 'clean', label: 'Hide restricted', test: (r) => !r.flags?.length },
 ];
 
 const fmtMcapRaw = (v: number | null | undefined, m: Market) => {
@@ -90,6 +95,24 @@ function Pagination({ page, pageCount, pageSize, total, offset, shown, onPage, o
         </nav>
       )}
     </div>
+  );
+}
+
+const dayShort = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+/** Restriction and new-listing badges under a stock's name. The reason shows on hover, or on tap via the title. */
+function RowFlags({ r }: { r: ScreenerRow }) {
+  const flags = r.flags ?? [];
+  if (!flags.length && !isNew(r)) return null;
+  return (
+    <span className="mt-1 flex flex-wrap gap-1">
+      {isNew(r) && <Badge tone="info" className="!px-2 !text-[11px]"><span title={`Listed ${dayShort(r.listedOn!)}`}>New · {dayShort(r.listedOn!)}</span></Badge>}
+      {flags.map((f) => (
+        <Badge key={f.label} tone={f.level === 'high' ? 'down' : 'warn'} className="!px-2 !text-[11px]">
+          <span title={f.detail} aria-label={`${f.label}: ${f.detail}`}>{f.label}</span>
+        </Badge>
+      ))}
+    </span>
   );
 }
 
@@ -196,7 +219,7 @@ export default function Screener() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Index screener</h1>
-          <p className="mt-1 text-sm text-sub">Every constituent of the major indices with live price, valuation and 52-week position.</p>
+          <p className="mt-1 text-sm text-sub">Every NSE-listed stock, updated daily so new listings appear on their own, plus the major indices, with live price, valuation, 52-week position and trading restrictions.</p>
         </div>
         <Segmented value={market} onChange={switchMarket} options={marketTabs} />
       </div>
@@ -309,12 +332,16 @@ export default function Screener() {
                             <a href={extLink(r.symbol)} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-semibold hover:text-brand-ink">{r.symbol}<ExternalLink size={11} className="text-sub opacity-0 group-hover:opacity-100" /></a>
                           )}
                           <span className="block truncate text-xs text-sub">{r.name}</span>
+                          <RowFlags r={r} />
                         </div>
                         {r.research && <Link to={`/stocks/${market}/${encodeURIComponent(r.symbol)}`}><Badge tone="brand" className="!px-2 !text-[11px]">Research</Badge></Link>}
                       </div>
                     </td>
                     <td className="hidden max-w-[11rem] truncate text-sub md:table-cell">{r.industry ?? '—'}</td>
-                    <td className="num text-right font-medium">{fmtP(r.price, market)}</td>
+                    <td className="num text-right font-medium">
+                      {fmtP(r.price, market)}
+                      {r.priceDate && <span className="block text-[11px] font-normal text-sub" title="NSE end-of-day close: live quotes aren't available for this stock yet">EOD {dayShort(r.priceDate)}</span>}
+                    </td>
                     <td className={clsx('num text-right font-semibold', r.changePct == null ? 'text-sub' : r.changePct >= 0 ? 'text-up' : 'text-down')}>{r.changePct == null ? '—' : pct(r.changePct, 2)}</td>
                     <td className="num text-right text-sub">{fmtMcapRaw(r.mcap, market)}</td>
                     <td className="num text-right">{r.pe != null && r.pe > 0 ? fx(r.pe) : '—'}</td>
@@ -341,6 +368,11 @@ export default function Screener() {
         </div>
       )}
       <p className="mt-4 text-xs text-sub">Stocks with a <Badge tone="brand" className="!px-2 !text-[11px]">Research</Badge> badge have a full MarketLens analysis with targets. Others link to the exchange quote page. Valuation data from Yahoo Finance; P/E shown only when earnings are positive.</p>
+      {market === 'IN' && (
+        <p className="mt-2 text-xs leading-relaxed text-sub">
+          <span className="font-semibold text-fg">Restriction flags</span> come from NSE, refreshed daily: <Badge tone="down" className="!px-2 !text-[11px]">Non-compliant</Badge> BZ/SZ series for breaching listing rules, <Badge tone="warn" className="!px-2 !text-[11px]">Trade-for-trade</Badge> BE/ST series (delivery only, no intraday), the ASM, GSM and ESM surveillance stages that SEBI and the exchanges apply jointly, and <Badge tone="down" className="!px-2 !text-[11px]">Not trading</Badge> for stocks missing from NSE's tradable list (suspended or delisted). Tap or hover a flag for the reason.
+        </p>
+      )}
     </div>
   );
 }

@@ -194,6 +194,17 @@ export interface IndexDef {
   csv: string | null;
   fallback: [string, string, string | null][] | null;
   fallbackNote?: string;
+  /** "nse": the complete NSE list for `board`, refreshed daily on the server. */
+  source?: 'nse';
+  board?: 'main' | 'sme';
+}
+
+/** A trading restriction from NSE: series (trade-for-trade, non-compliant), ASM / GSM / ESM surveillance, or not trading. */
+export interface TradeFlag {
+  code: string;
+  label: string;
+  detail: string;
+  level: 'high' | 'warn';
 }
 
 export interface ScreenerRow {
@@ -211,6 +222,11 @@ export interface ScreenerRow {
   low52?: number | null;
   volume?: number | null;
   marketOpen?: boolean | null;
+  /** Set when the price is NSE's end-of-day close (stocks Yahoo doesn't cover yet). */
+  priceDate?: string;
+  series?: string | null;
+  listedOn?: string | null;
+  flags?: TradeFlag[];
 }
 
 export interface ScreenerResult {
@@ -218,5 +234,6 @@ export interface ScreenerResult {
   asOf: number;
   constituentsSource: string;
   quoteSource: string | null;
+  eodDate?: string | null;
   rows: ScreenerRow[];
 }

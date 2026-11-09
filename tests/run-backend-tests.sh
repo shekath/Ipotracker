@@ -7,7 +7,7 @@ cat > "$TMP/config.local.php" <<PHP
 <?php return [
   'data_dir' => '$TMP/data',
   'cron_token' => 'secret',
-  'upstream' => ['yahoo' => ['http://127.0.0.1:8099'], 'yahoo_cookie' => 'http://127.0.0.1:8099/fc', 'niftyindices' => 'http://127.0.0.1:8099', 'nse' => 'http://127.0.0.1:8099', 'twelvedata' => 'http://127.0.0.1:8099', 'sp500_csv' => 'http://127.0.0.1:8099/sp500.csv', 'ndx_page' => 'http://127.0.0.1:8099/ndx'],
+  'upstream' => ['yahoo' => ['http://127.0.0.1:8099'], 'yahoo_cookie' => 'http://127.0.0.1:8099/fc', 'niftyindices' => 'http://127.0.0.1:8099', 'nse' => 'http://127.0.0.1:8099', 'nse_archives' => 'http://127.0.0.1:8099', 'twelvedata' => 'http://127.0.0.1:8099', 'sp500_csv' => 'http://127.0.0.1:8099/sp500.csv', 'ndx_page' => 'http://127.0.0.1:8099/ndx'],
   'gmp_sources' => [['name' => 'Mock GMP', 'url' => 'http://127.0.0.1:8099/gmp.html']],
 ];
 PHP
@@ -38,13 +38,19 @@ H1=$(curl -s "http://127.0.0.1:8098/api/history.php?id=IX:NIFTY&range=1d")
 echo "ok history"
 
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/cron/update-ipos.php")" = "403" ] || fail "cron needs token"
+# Issues the store already holds: one listed three days ago (must drop off), one that closed
+# yesterday and awaits listing, and one listing today (both stay).
+mkdir -p "$TMP/data"
+php -r '$d = fn($o) => date("Y-m-d", strtotime("$o days")); $r = fn($n, $o, $c, $l) => ["name" => $n, "type" => "Mainboard", "openDate" => $d($o), "closeDate" => $d($c), "listingDate" => $l === null ? null : $d($l), "firstSeen" => $d($o), "subscription" => [], "gmp" => [], "sources" => ["NSE"]];
+  file_put_contents($argv[1], json_encode(["ipos" => ["OLDLIST" => $r("Old Listed Limited", -9, -7, -3), "WAITLIST" => $r("Awaiting Listing Limited", -3, -1, null), "TODAYLIST" => $r("Listing Today Limited", -6, -4, 0)]]));' "$TMP/data/ipo-store.json"
 R=$(curl -s "http://127.0.0.1:8098/api/cron/update-ipos.php?token=secret")
 [ "$(echo "$R" | j '$d["ok"]')" = "true" ] || fail "cron run: $R"
 echo "ok cron"
 
 I=$(curl -s "http://127.0.0.1:8098/api/ipos.php")
 echo "$I" | j 'array_map(fn($i)=>$i["id"]." ".$i["type"]." subs=".count($i["subscription"])." gmp=".json_encode(array_column($i["gmp"],"value")), $d["ipos"])'; echo
-[ "$(echo "$I" | j 'count($d["ipos"])')" = "4" ] || fail "expected 4 ipos (3 NSE + 1 BSE-only from GMP)"
+[ "$(echo "$I" | j 'count($d["ipos"])')" = "6" ] || fail "expected 6 ipos (3 NSE + 1 BSE-only from GMP + 2 kept from the store)"
+echo "$I" | j 'implode(",", array_intersect(["Old Listed Limited","Awaiting Listing Limited","Listing Today Limited"], array_column($d["ipos"],"name")))' | grep -qx '"Awaiting Listing Limited,Listing Today Limited"' || fail "listed IPOs drop off the day after listing; closed and listing-today ones stay"
 BLS=$(echo "$I" | j 'array_values(array_filter($d["ipos"], fn($i)=>$i["symbol"]==="BLSPOLY"))[0]')
 [ "$(echo "$BLS" | j '$d["subscription"][0]["qib"]')" = "1.5" ] || fail "qib: $BLS"
 [ "$(echo "$BLS" | j '$d["subscription"][0]["snii"]')" = "8.4" ] || fail "snii"
@@ -61,6 +67,7 @@ echo "$I" | j 'in_array("Old Listed Co", array_column($d["ipos"],"name"))' | gre
 echo "$I" | j 'in_array("Garbled Dates", array_column($d["ipos"],"name"))' | grep -q false || fail "garbled date ranges must be rejected"
 echo "$I" | j 'array_values(array_filter($d["ipos"], fn($i)=>$i["id"]==="gmp-onlyindustries"))[0]["name"]' | grep -q '"BSE Only Industries"' || fail "status words stripped from tracker names"
 echo "$I" | j 'array_values(array_filter($d["ipos"], fn($i)=>$i["id"]==="gmp-onlyindustries"))[0]["type"]' | grep -q '"SME"' || fail "tracker-only issues are SME"
+echo "$I" | j 'count(array_filter($d["ipos"], fn($i)=>!empty($i["timeline"]["listing"]) && $i["timeline"]["listing"] < date("Y-m-d")))' | grep -qx 0 || fail "IPOs drop off the day after listing"
 echo "ok ipos"
 
 S=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=nifty50")
@@ -76,10 +83,26 @@ S2=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=banknifty")
 S3=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=dow30")
 [ "$(echo "$S3" | j 'count($d["rows"])')" = "30" ] || fail "dow30"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8098/api/screener.php?index=nope")" = "404" ] || fail "unknown index"
+# All NSE: the complete main-board list from NSE, with restriction flags.
 A1=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=allin")
-[ "$(echo "$A1" | j '$d["constituentsSource"]')" = '"NSE Indices (official)"' ] || fail "All (India) uses the broad Nifty 500 list: $(echo "$A1" | head -c 200)"
-[ "$(echo "$A1" | j 'count($d["rows"])')" = "60" ] || fail "All (India) rows"
-[ "$(echo "$A1" | j 'count(array_filter($d["rows"], fn($r)=>$r["price"]>0))')" = "60" ] || fail "All (India) quotes"
+[ "$(echo "$A1" | j '$d["constituentsSource"]')" = '"NSE listed securities (official, daily)"' ] || fail "All NSE uses NSE's listed-securities file: $(echo "$A1" | head -c 200)"
+[ "$(echo "$A1" | j 'count($d["rows"])')" = "548" ] || fail "All NSE rows (main board only)"
+[ "$(echo "$A1" | j 'count(array_filter($d["rows"], fn($r)=>$r["price"]>0))')" = "548" ] || fail "All NSE quotes"
+fl() { echo "$1" | j "implode('|', array_column(array_values(array_filter(\$d['rows'], fn(\$r)=>\$r['symbol']==='$2'))[0]['flags'] ?? [], 'label'))"; }
+[ "$(fl "$A1" BADCO)" = '"Non-compliant (BZ)"' ] || fail "BZ flag: $(fl "$A1" BADCO)"
+[ "$(fl "$A1" TFTCO)" = '"Trade-for-trade (BE)|ESM Stage I"' ] || fail "BE + ESM flags: $(fl "$A1" TFTCO)"
+[ "$(fl "$A1" GSMCO)" = '"GSM stage II"' ] || fail "GSM flag: $(fl "$A1" GSMCO)"
+[ "$(fl "$A1" RELIANCE)" = '""' ] || fail "clean stock has no flags"
+[ "$(echo "$A1" | j 'array_values(array_filter($d["rows"], fn($r)=>$r["symbol"]==="NEWMAIN"))[0]["listedOn"] === date("Y-m-d", strtotime("-3 days"))')" = "true" ] || fail "new listing appears with its listing date"
+SM=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=nsesme")
+[ "$(echo "$SM" | j 'count($d["rows"])')" = "32" ] || fail "NSE SME rows: $(echo "$SM" | head -c 200)"
+[ "$(echo "$SM" | j 'array_values(array_filter($d["rows"], fn($r)=>$r["symbol"]==="SMENEW"))[0]["price"]')" = "150" ] || fail "end-of-day price for a stock Yahoo doesn't cover yet"
+[ "$(echo "$SM" | j 'array_values(array_filter($d["rows"], fn($r)=>$r["symbol"]==="SMENEW"))[0]["listedOn"] === date("Y-m-d", strtotime("-1 day"))')" = "true" ] || fail "two-digit SME listing year"
+[ "$(fl "$SM" SMEBAD)" = '"Non-compliant (SZ)"' ] || fail "SZ flag"
+# Nifty 500 keeps the official index list; a stock missing from NSE's tradable list is flagged.
+N5=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=nifty500")
+[ "$(echo "$N5" | j '$d["constituentsSource"]')" = '"NSE Indices (official)"' ] || fail "Nifty 500 uses the index list"
+[ "$(fl "$N5" BROAD1)" = '"Not trading"' ] || fail "suspended / delisted flag: $(fl "$N5" BROAD1)"
 A2=$(curl -s "http://127.0.0.1:8098/api/screener.php?index=allus")
 [ "$(echo "$A2" | j 'count($d["rows"])')" = "37" ] || fail "All (US) = Dow 30 + mega caps, deduplicated"
 [ "$(echo "$A2" | j 'count(array_unique(array_column($d["rows"],"symbol")))')" = "37" ] || fail "no duplicates"
@@ -140,6 +163,8 @@ U=$(php public/api/cron/update-research.php US 1000)
 TR=$(curl -s "http://127.0.0.1:8098/api/research.php?market=IN&track=1")
 [ "$(echo "$TR" | j 'count($d["entries"]) === count(array_filter($d["entries"], fn($e) => in_array($e["h"], ["st", "lt"])))')" = "true" ] || fail "track record endpoint: $TR"
 [ "$(echo "$TR" | j 'count($d["entries"]) > 0')" = "true" ] || fail "picks were not logged to the track record: $TR"
+T3=$(curl -s "http://127.0.0.1:8098/api/research.php?market=IN&symbol=TOTAL3")
+[ "$(echo "$T3" | j 'in_array("Surveillance: Long-term ASM Stage I", $d["row"]["flags"])')" = "true" ] || fail "NSE surveillance flag on a researched stock: $(echo "$T3" | head -c 300)"
 echo "ok research"
 php tests/track-test.php || fail "track record"
 
