@@ -92,7 +92,7 @@ export default function Layout() {
             {/* Hidden inside the Android app itself (its user agent carries MarketLensApp). */}
             {!inApp && (
               <a href="./download/MarketLens.apk" download className="btn-ghost border border-line text-fg">
-                <Smartphone size={15} /> Get the Android app <span className="text-sub">APK · v1.1</span>
+                <Smartphone size={15} /> Get the Android app <span className="text-sub">APK · v1.2</span>
               </a>
             )}
           </div>
