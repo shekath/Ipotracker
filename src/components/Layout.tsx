@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import clsx from 'clsx';
 import { BarChart3, LayoutDashboard, Monitor, Moon, Rocket, SlidersHorizontal, Smartphone, Star, Sun, Target } from 'lucide-react';
 import { useTheme, type ThemePref } from '../lib/theme';
+import { trackPageView } from '../lib/analytics';
 
 // `short` is shown on medium screens, `mobile` in the bottom tab bar. `tab: false` keeps an item out of the
 // bottom tab bar (five tabs at most); `also` lists routes that light up a tab, so Screener counts as Stocks.
@@ -55,12 +56,15 @@ export function Logo() {
 }
 
 export default function Layout() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   // Braces matter: newer browsers make scrollTo() return a Promise, and an effect
   // that returns anything but a cleanup function crashes React on navigation.
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [pathname]);
+  useEffect(() => {
+    trackPageView(pathname + search);
+  }, [pathname, search]);
 
   return (
     <div className="min-h-screen pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
