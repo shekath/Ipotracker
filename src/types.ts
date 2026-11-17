@@ -114,6 +114,8 @@ export interface Ipo {
 
 export interface PipelineIpo {
   name: string;
+  /** Legal-name prefix as the exchanges list it; once a match trades on NSE or BSE, the row is hidden. */
+  match: string;
   sector: string;
   expectedSize: string;
   status: string;

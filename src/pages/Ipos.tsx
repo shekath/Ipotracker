@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Info, Radio } from 'lucide-react';
 import clsx from 'clsx';
 import { pipeline } from '../data';
@@ -7,13 +7,28 @@ import { EmptyState, SectionHeader, Segmented } from '../components/ui';
 import { timeAgo } from '../components/live';
 import { ipoStatus, type IpoStatus } from '../lib/scoring';
 import { useIpoViews } from '../lib/useIpoViews';
+import { getJSON } from '../lib/api';
 
 type Filter = 'All' | IpoStatus;
+
+/** Pipeline rows minus any company that is already trading on NSE or BSE. */
+function useUpcomingPipeline() {
+  const [listed, setListed] = useState<Record<string, unknown>>({});
+  useEffect(() => {
+    let live = true;
+    getJSON<{ listed: Record<string, unknown> }>(`pipeline.php?names=${encodeURIComponent(pipeline.map((p) => p.match).join('|'))}`)
+      .then((r) => { if (live) setListed(r.listed ?? {}); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+  return pipeline.filter((p) => !listed[p.match]);
+}
 
 export default function Ipos() {
   const [filter, setFilter] = useState<Filter>('All');
   const [type, setType] = useState<'All' | 'Mainboard' | 'SME'>('Mainboard');
   const { views, feed, status } = useIpoViews();
+  const upcoming = useUpcomingPipeline();
   const ipos = views.filter((i) => type === 'All' || i.type === type);
   const counts = ipos.reduce<Record<string, number>>((acc, i) => {
     const s = ipoStatus(i);
@@ -62,12 +77,13 @@ export default function Ipos() {
       </div>
 
       <section>
-        <SectionHeader title="Big-ticket pipeline" subtitle="Large issues to watch — no recommendation until the RHP and price band are out" />
+        <SectionHeader title="Big-ticket pipeline" subtitle="Large issues still to come — no recommendation until the RHP and price band are out" />
+        {upcoming.length ? (
         <div className="card overflow-x-auto">
           <table className="table-base">
             <thead><tr><th>Company</th><th>Sector</th><th>Expected size</th><th>Status</th><th>What to watch</th></tr></thead>
             <tbody>
-              {pipeline.map((p) => (
+              {upcoming.map((p) => (
                 <tr key={p.name}>
                   <td className="font-semibold">{p.name}</td>
                   <td className="text-sub">{p.sector}</td>
@@ -79,6 +95,9 @@ export default function Ipos() {
             </tbody>
           </table>
         </div>
+        ) : (
+          <EmptyState title="Nothing in the pipeline" body="Every big issue we were watching has now listed." />
+        )}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">

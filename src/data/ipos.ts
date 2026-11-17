@@ -212,10 +212,10 @@ export const ipos: Ipo[] = [
 ];
 
 // Large issues in the pipeline. Status is as last publicly reported and may have moved.
+// Companies that start trading are hidden automatically (see /api/pipeline.php); remove them here too.
+// Jio Platforms (listed 28 Oct 2026) and NSE (listed on BSE) have already listed.
 export const pipeline: PipelineIpo[] = [
-  { name: 'Reliance Jio Platforms', sector: 'Telecom & Digital', expectedSize: 'Likely India’s largest IPO', status: 'Announced for 2026 (AGM 2025); timing subject to approvals', watchNote: 'Valuation vs. Bharti Airtel and ARPU trajectory; size of retail quota.' },
-  { name: 'National Stock Exchange (NSE)', sector: 'Capital Markets', expectedSize: 'OFS by existing shareholders', status: 'Awaiting final SEBI clearances', watchNote: 'Monopoly-like F&O share, 50%+ margins; listed peer BSE trades at a premium.' },
-  { name: 'PhonePe', sector: 'Fintech · Payments', expectedSize: 'Large OFS expected', status: 'DRHP filed via confidential route', watchNote: 'UPI market share ~48%; path to profitability and MDR policy risk.' },
-  { name: 'Flipkart', sector: 'E-commerce', expectedSize: 'TBA', status: 'Redomiciled to India; listing plan not yet formalised', watchNote: 'Competitive position vs. Amazon & quick commerce; losses narrowing.' },
-  { name: 'OYO (PRISM)', sector: 'Travel & Hospitality', expectedSize: '~₹6,650 Cr', status: 'DRHP filed via confidential route', watchNote: 'Recent profitability; past governance and debt history.' },
+  { name: 'PhonePe', match: 'PhonePe', sector: 'Fintech · Payments', expectedSize: 'Large OFS expected', status: 'DRHP filed via confidential route', watchNote: 'UPI market share ~48%; path to profitability and MDR policy risk.' },
+  { name: 'Flipkart', match: 'Flipkart', sector: 'E-commerce', expectedSize: 'TBA', status: 'Redomiciled to India; listing plan not yet formalised', watchNote: 'Competitive position vs. Amazon & quick commerce; losses narrowing.' },
+  { name: 'OYO (PRISM)', match: 'Oravel Stays', sector: 'Travel & Hospitality', expectedSize: '~₹6,650 Cr', status: 'DRHP filed via confidential route', watchNote: 'Recent profitability; past governance and debt history.' },
 ];
