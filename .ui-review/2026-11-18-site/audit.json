@@ -1,0 +1,552 @@
+{
+ "dashboard-390-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Institutional-grade research for Indian markets."
+  ],
+  "overflow": 0,
+  "wide": [
+   "div.pointer-events-none absolute -right-24 -top-24 h-7 right=469",
+   "div.pointer-events-none absolute -bottom-32 left-1/3 h right=424"
+  ],
+  "smallTargets": 17,
+  "smallSample": [
+   "a \"CUPID\" 44x17",
+   "a \"MAHABANK\" 84x17",
+   "a \"LOTUSDEV\" 75x17",
+   "a \"GESHIP\" 51x17",
+   "a \"QPOWER\" 62x17",
+   "a \"SPARC\" 47x17",
+   "a \"RUBICON\" 64x17",
+   "a \"CGCL\" 39x17",
+   "a \"Technology (2)+55.0%\" 316x20",
+   "a \"Consumer (1)+30.6%\" 316x20",
+   "a \"Energy (1)+26.3%\" 316x20",
+   "a \"Automobile (1)+18.4%\" 316x20"
+  ],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 1,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1"
+    ]
+   }
+  ]
+ },
+ "picks-390-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "High-conviction picks"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 10,
+  "smallSample": [
+   "a \"CUPID\" 56x21",
+   "a \"LOTUSDEV\" 97x21",
+   "a \"QPOWER\" 80x21",
+   "a \"RUBICON\" 83x21",
+   "a \"SKYGOLD\" 87x21",
+   "a \"SHREEJISPG\" 111x21",
+   "a \"MCX\" 43x21",
+   "a \"TMB\" 40x21",
+   "a \"UNIMECH\" 86x21",
+   "a \"ACUTAAS\" 87x21"
+  ],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 3,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".py-2\\.5 > .text-sub:nth-child(2) :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     ".sm\\:ml-auto :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   },
+   {
+    "id": "heading-order",
+    "impact": "moderate",
+    "n": 1,
+    "sample": [
+     "article:nth-child(1) > .items-start.flex-wrap.gap-3 > .min-w-0 > h3 :: Heading order invalid"
+    ]
+   }
+  ]
+ },
+ "stocks-390-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Stock research"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 27,
+  "smallSample": [
+   "button \"Company\" 66x16",
+   "button \"Day\" 26x16",
+   "a \"MAHABANK\" 84x17",
+   "a \"GESHIP\" 51x17",
+   "a \"KISSHT\" 52x17",
+   "a \"SPARC\" 47x17",
+   "a \"CGCL\" 39x17",
+   "a \"COALINDIA\" 77x17",
+   "a \"LLOYDSME\" 76x17",
+   "a \"MANAPPURAM\" 105x17",
+   "a \"MCX\" 33x17",
+   "a \"TMB\" 31x17"
+  ],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 3,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".gap-x-4 > .text-sub:nth-child(2) :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     ".sm\\:ml-auto :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   }
+  ]
+ },
+ "screener-390-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Index screener"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 44,
+  "smallSample": [
+   "button \"Company\" 66x16",
+   "button \"Price\" 38x16",
+   "button \"Day\" 26x16",
+   "button \"Mcap\" 54x16",
+   "button \"P/E\" 21x16",
+   "button \"P/B\" 22x16",
+   "button \"Div %\" 39x16",
+   "button \"52W range\" 77x16",
+   "a \"RELIANCE\" 130x20",
+   "a \"Research\" 66x21",
+   "a \"BHARTIARTL\" 111x20",
+   "a \"Research\" 66x21"
+  ],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 2,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".bg-warn\\/10 :: Element has insufficient color contrast of 4.14 (foreground color: #b45309, background color: #f0e8e2, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   }
+  ]
+ },
+ "ipo-390-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "IPO desk · India"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 0,
+  "smallSample": [],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 6,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".gap-x-4 > .text-sub:nth-child(2) :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     "span[title=\"2 current/upcoming issues\"] :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   },
+   {
+    "id": "heading-order",
+    "impact": "moderate",
+    "n": 1,
+    "sample": [
+     "a[href$=\"#/ipo/nse-crystalcp\"] > .items-start.gap-3.justify-between > .min-w-0 > h3 :: Heading order invalid"
+    ]
+   },
+   {
+    "id": "scrollable-region-focusable",
+    "impact": "serious",
+    "n": 1,
+    "sample": [
+     ".overflow-x-auto :: Element should have focusable content"
+    ]
+   }
+  ]
+ },
+ "targets-390-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Weekly index targets"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 0,
+  "smallSample": [],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 16,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".ring-up\\/20 :: Element has insufficient color contrast of 4.49 (foreground color: #047857, background color: #dfebea, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     ".max-w-md :: Element has insufficient color contrast of 4.37 (foreground color: #647083, background color: #e6f2ee, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   }
+  ]
+ },
+ "dashboard-1280-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Institutional-grade research for Indian markets."
+  ],
+  "overflow": 0,
+  "wide": [
+   "div.pointer-events-none absolute -right-24 -top-24 h-7 right=1343"
+  ],
+  "smallTargets": 17,
+  "smallSample": [
+   "a \"CUPID\" 44x17",
+   "a \"MAHABANK\" 84x17",
+   "a \"LOTUSDEV\" 75x17",
+   "a \"GESHIP\" 51x17",
+   "a \"QPOWER\" 62x17",
+   "a \"SPARC\" 47x17",
+   "a \"RUBICON\" 64x17",
+   "a \"CGCL\" 39x17",
+   "a \"Technology (2)+55.0%\" 670x20",
+   "a \"Consumer (1)+30.6%\" 670x20",
+   "a \"Energy (1)+26.3%\" 670x20",
+   "a \"Automobile (1)+18.4%\" 670x20"
+  ],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 1,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1"
+    ]
+   }
+  ]
+ },
+ "picks-1280-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "High-conviction picks"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 10,
+  "smallSample": [
+   "a \"CUPID\" 56x21",
+   "a \"LOTUSDEV\" 97x21",
+   "a \"QPOWER\" 80x21",
+   "a \"RUBICON\" 83x21",
+   "a \"SKYGOLD\" 87x21",
+   "a \"SHREEJISPG\" 111x21",
+   "a \"MCX\" 43x21",
+   "a \"TMB\" 40x21",
+   "a \"UNIMECH\" 86x21",
+   "a \"ACUTAAS\" 87x21"
+  ],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 3,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".py-2\\.5 > .text-sub:nth-child(2) :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     ".sm\\:ml-auto :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   },
+   {
+    "id": "heading-order",
+    "impact": "moderate",
+    "n": 1,
+    "sample": [
+     "article:nth-child(1) > .items-start.flex-wrap.gap-3 > .min-w-0 > h3 :: Heading order invalid"
+    ]
+   }
+  ]
+ },
+ "stocks-1280-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Stock research"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 31,
+  "smallSample": [
+   "button \"Company\" 66x16",
+   "button \"Day\" 26x16",
+   "button \"Mcap\" 38x16",
+   "button \"P/E\" 21x16",
+   "button \"Long term\" 92x16",
+   "button \"Short term\" 85x16",
+   "a \"MAHABANK\" 84x17",
+   "a \"GESHIP\" 51x17",
+   "a \"KISSHT\" 52x17",
+   "a \"SPARC\" 47x17",
+   "a \"CGCL\" 39x17",
+   "a \"COALINDIA\" 77x17"
+  ],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 3,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".gap-x-4 > .text-sub:nth-child(2) :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     ".sm\\:ml-auto :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   }
+  ]
+ },
+ "screener-1280-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Index screener"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 44,
+  "smallSample": [
+   "button \"Company\" 66x16",
+   "button \"Price\" 38x16",
+   "button \"Day\" 26x16",
+   "button \"Mcap\" 54x16",
+   "button \"P/E\" 21x16",
+   "button \"P/B\" 22x16",
+   "button \"Div %\" 39x16",
+   "button \"52W range\" 77x16",
+   "a \"RELIANCE\" 152x20",
+   "a \"Research\" 66x21",
+   "a \"BHARTIARTL\" 111x20",
+   "a \"Research\" 66x21"
+  ],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 2,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".bg-warn\\/10 :: Element has insufficient color contrast of 4.14 (foreground color: #b45309, background color: #f0e8e2, font size: 8.3pt (11px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   }
+  ]
+ },
+ "ipo-1280-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "IPO desk · India"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 0,
+  "smallSample": [],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 6,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".gap-x-4 > .text-sub:nth-child(2) :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     "span[title=\"2 current/upcoming issues\"] :: Element has insufficient color contrast of 4.42 (foreground color: #647083, background color: #ebf2f2, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   },
+   {
+    "id": "heading-order",
+    "impact": "moderate",
+    "n": 1,
+    "sample": [
+     "a[href$=\"#/ipo/nse-crystalcp\"] > .items-start.gap-3.justify-between > .min-w-0 > h3 :: Heading order invalid"
+    ]
+   }
+  ]
+ },
+ "targets-1280-light": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Weekly index targets"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 0,
+  "smallSample": [],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 16,
+    "sample": [
+     ".text-brand :: Element has insufficient color contrast of 2.38 (foreground color: #10b981, background color: #f7f8fa, font size: 12.8pt (17px), font weight: bold). Expected contrast ratio of 4.5:1",
+     ".ring-up\\/20 :: Element has insufficient color contrast of 4.49 (foreground color: #047857, background color: #dfebea, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     ".max-w-md :: Element has insufficient color contrast of 4.37 (foreground color: #647083, background color: #e6f2ee, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   }
+  ]
+ },
+ "dashboard-1280-dark": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Institutional-grade research for Indian markets."
+  ],
+  "overflow": 0,
+  "wide": [
+   "div.pointer-events-none absolute -right-24 -top-24 h-7 right=1343"
+  ],
+  "smallTargets": 17,
+  "smallSample": [
+   "a \"CUPID\" 44x17",
+   "a \"MAHABANK\" 84x17",
+   "a \"LOTUSDEV\" 75x17",
+   "a \"GESHIP\" 51x17",
+   "a \"QPOWER\" 62x17",
+   "a \"SPARC\" 47x17",
+   "a \"RUBICON\" 64x17",
+   "a \"CGCL\" 39x17",
+   "a \"Technology (2)+55.0%\" 670x20",
+   "a \"Consumer (1)+30.6%\" 670x20",
+   "a \"Energy (1)+26.3%\" 670x20",
+   "a \"Automobile (1)+18.4%\" 670x20"
+  ],
+  "axe": []
+ },
+ "picks-1280-dark": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "High-conviction picks"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 10,
+  "smallSample": [
+   "a \"CUPID\" 56x21",
+   "a \"LOTUSDEV\" 97x21",
+   "a \"QPOWER\" 80x21",
+   "a \"RUBICON\" 83x21",
+   "a \"SKYGOLD\" 87x21",
+   "a \"SHREEJISPG\" 111x21",
+   "a \"MCX\" 43x21",
+   "a \"TMB\" 40x21",
+   "a \"UNIMECH\" 86x21",
+   "a \"ACUTAAS\" 87x21"
+  ],
+  "axe": [
+   {
+    "id": "heading-order",
+    "impact": "moderate",
+    "n": 1,
+    "sample": [
+     "article:nth-child(1) > .items-start.flex-wrap.gap-3 > .min-w-0 > h3 :: Heading order invalid"
+    ]
+   }
+  ]
+ },
+ "stocks-1280-dark": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Stock research"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 31,
+  "smallSample": [
+   "button \"Company\" 66x16",
+   "button \"Day\" 26x16",
+   "button \"Mcap\" 38x16",
+   "button \"P/E\" 21x16",
+   "button \"Long term\" 92x16",
+   "button \"Short term\" 85x16",
+   "a \"MAHABANK\" 84x17",
+   "a \"GESHIP\" 51x17",
+   "a \"KISSHT\" 52x17",
+   "a \"SPARC\" 47x17",
+   "a \"CGCL\" 39x17",
+   "a \"COALINDIA\" 77x17"
+  ],
+  "axe": []
+ },
+ "screener-1280-dark": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Index screener"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 44,
+  "smallSample": [
+   "button \"Company\" 66x16",
+   "button \"Price\" 38x16",
+   "button \"Day\" 26x16",
+   "button \"Mcap\" 54x16",
+   "button \"P/E\" 21x16",
+   "button \"P/B\" 22x16",
+   "button \"Div %\" 39x16",
+   "button \"52W range\" 77x16",
+   "a \"RELIANCE\" 152x20",
+   "a \"Research\" 66x21",
+   "a \"BHARTIARTL\" 111x20",
+   "a \"Research\" 66x21"
+  ],
+  "axe": []
+ },
+ "ipo-1280-dark": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "IPO desk · India"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 0,
+  "smallSample": [],
+  "axe": [
+   {
+    "id": "heading-order",
+    "impact": "moderate",
+    "n": 1,
+    "sample": [
+     "a[href$=\"#/ipo/nse-crystalcp\"] > .items-start.gap-3.justify-between > .min-w-0 > h3 :: Heading order invalid"
+    ]
+   }
+  ]
+ },
+ "targets-1280-dark": {
+  "title": "MarketLens · Stocks & IPO Research",
+  "h1": [
+   "Weekly index targets"
+  ],
+  "overflow": 0,
+  "wide": [],
+  "smallTargets": 0,
+  "smallSample": [],
+  "axe": [
+   {
+    "id": "color-contrast",
+    "impact": "serious",
+    "n": 10,
+    "sample": [
+     ".text-base > .py-0\\.5.ring-inset.ring-line :: Element has insufficient color contrast of 2.91 (foreground color: #5b616e, background color: #13161e, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     ".transition-opacity.opacity-60 > .mb-3.items-baseline.gap-y-1 > .label :: Element has insufficient color contrast of 3.05 (foreground color: #5b616e, background color: #0e1017, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",
+     ".transition-opacity.opacity-60 > .gap-1.grid > .grid-cols-\\[18px_minmax\\(0\\,1fr\\)_auto\\].py-2\\.5.gap-y-1\\.5:nth-child(1) > .min-w-0 > .block.text-xs.text-sub :: Element has insufficient color contrast of 3.05 (foreground color: #5b616e, background color: #0e1017, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+    ]
+   }
+  ]
+ }
+}
