@@ -189,7 +189,7 @@ export default function Dashboard() {
           <SectionHeader title="Sector outlook" subtitle="Average upside to fair value and composite score" />
           <div className="space-y-3.5">
             {sectorStats.map((s) => (
-              <Link to={`/stocks?sector=${encodeURIComponent(s.sector)}&market=${market}`} key={s.sector} className="group grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 sm:grid-cols-[10rem_1fr_auto]">
+              <Link to={`/stocks?sector=${encodeURIComponent(s.sector)}&market=${market}`} key={s.sector} className="hit group grid grid-cols-[minmax(0,7.5rem)_1fr_auto] items-center gap-3 sm:grid-cols-[10rem_1fr_auto]">
                 <div className="truncate text-sm font-medium group-hover:text-brand-ink">{s.sector} <span className="text-xs text-sub">({s.n})</span></div>
                 <div className="relative h-2 rounded-full bg-muted">
                   <div className={clsx('absolute h-2 rounded-full', s.up >= 0 ? 'bg-up' : 'bg-down')} style={{ width: `${(Math.abs(s.up) / maxUp) * 100}%` }} />

@@ -8,13 +8,13 @@
   --muted: 241 243 246;
   --line: 228 231 236;
   --fg: 15 23 42;
-  --sub: 100 112 131;
+  --sub: 88 99 117;
   --brand: 16 185 129;
   /* Text-safe shades (4.5:1 or better on surface, bg and muted); --brand stays the fill colour. */
-  --brand-ink: 4 120 87;
-  --up: 4 120 87;
+  --brand-ink: 4 108 78;
+  --up: 4 108 78;
   --down: 185 28 28;
-  --warn: 180 83 9;
+  --warn: 154 72 8;
   --info: 29 78 216;
   color-scheme: light;
 }
@@ -64,6 +64,16 @@
   .btn, .chip, .input, [role='tab'] { min-height: 44px; }
   /* Icon-only buttons: grow the hit area, keep the glyph size. */
   .tap { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+  /* 16 px text in fields: iOS zooms the page into any field smaller than that. */
+  .input, select, textarea, input:not([type='checkbox']):not([type='radio']):not([type='range']) { font-size: 16px !important; }
+  /* Table sort headers: the button itself is 44 px tall (the scrolling table would clip anything drawn outside it). */
+  .table-base th:has(> button) { padding-top: 0; padding-bottom: 0; }
+  .table-base th > button { min-height: 44px; }
+  /* Row links and small list links: a 44 px tap area around a compact label, without taller rows.
+     A row's symbol sits on its top line with the company name below, so the area grows down over the name. */
+  .table-base td a, .hit { position: relative; }
+  .table-base td a::after, .hit::after { content: ''; position: absolute; left: -8px; right: -8px; top: 50%; height: 44px; transform: translateY(-50%); }
+  .table-base td a::after { top: -6px; transform: none; }
 }
 
 @layer components {

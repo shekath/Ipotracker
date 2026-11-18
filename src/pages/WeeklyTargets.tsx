@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import clsx from 'clsx';
 import { RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { getJSON } from '../lib/api';
-import { Badge, Segmented } from '../components/ui';
+import { Badge, Segmented, LoadingCard, StaleBanner } from '../components/ui';
 import {
   INDEX_KEYS, INDEX_NAMES, baseValue, computeRange, defaultPrice, levels, signal,
   type Base, type Divisor, type IndexKey, type Level, type PrevWeek, type Signal, type WeeklyFeed, type WeeklyResult, type WeekSoFar,
@@ -64,6 +64,10 @@ export default function WeeklyTargets() {
   useEffect(() => save('ml-wt-div', div), [div]);
 
   const item = feed?.[index];
+  // A fallback snapshot more than a week old describes a past week: show it as such and make no call.
+  const snapDate = item?.prevDay?.date ?? null;
+  const snapAgeDays = snapDate ? Math.floor((Date.now() - new Date(snapDate + 'T16:00:00+05:30').getTime()) / 86_400_000) : null;
+  const staleSnapshot = !!item && !live && !edits[index] && (snapAgeDays == null || snapAgeDays > 7);
   const def = defaultPrice(item);
   // The previous trading day's close is the default price (the live price stays a separate marker); Reset goes to last week's close.
   const feedClose = item?.prevDay?.close ?? NaN;
@@ -135,15 +139,21 @@ export default function WeeklyTargets() {
         ) : failed ? <span className="text-down">Couldn't load index data. Open Edit inputs to type last week's numbers.</span> : <span>Loading index data…</span>}
       </div>
 
-      {!item && !failed && <div className="card card-pad h-48 animate-pulse" />}
+      {!item && !failed && <LoadingCard className="h-48" label="Loading index data…" />}
 
       {calc?.err && (
         <div className="card card-pad text-sm text-down">{calc.err}. Open <b>Edit inputs</b> and fill in last week's numbers.</div>
       )}
 
+      {calc?.r && staleSnapshot && (
+        <StaleBanner>
+          Live index data is unavailable. These levels are from the week of <b>{item?.prevWeekLabel}</b>{snapAgeDays != null ? <>, {snapAgeDays} days ago</> : null}, not this week, so there is no up or down call. Open <b>Edit inputs</b> to enter last week's numbers.
+        </StaleBanner>
+      )}
+
       {calc?.r && (
         <>
-          <Hero name={INDEX_NAMES[index]} r={calc.r} s={calc.s} price={v.price} def={def} src={src} weekLabel={item?.prevWeekLabel ?? ''} curClose={v.curClose} curWhen={edits[index]?.curClose === undefined ? curWhen : 'From Edit inputs'} onPrice={setPrice} onUseCurrent={() => (edits[index]?.curClose === undefined ? followFeed() : usePrice(v.curClose, 'current'))} onReset={resetPrice} />
+          <Hero stale={staleSnapshot} name={INDEX_NAMES[index]} r={calc.r} s={calc.s} price={v.price} def={def} src={src} weekLabel={item?.prevWeekLabel ?? ''} curClose={v.curClose} curWhen={edits[index]?.curClose === undefined ? curWhen : 'From Edit inputs'} onPrice={setPrice} onUseCurrent={() => (edits[index]?.curClose === undefined ? followFeed() : usePrice(v.curClose, 'current'))} onReset={resetPrice} />
 
           <section className="card card-pad">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -170,7 +180,7 @@ export default function WeeklyTargets() {
 
           <div className="grid gap-5 md:grid-cols-2">
             {(['up', 'down'] as const).map((side) => (
-              <TargetList key={side} side={side} r={calc.r!} s={calc.s} div={div} step={calc.step} price={v.price} hl={hl} setHl={setHl} />
+              <TargetList key={side} side={side} r={calc.r!} s={staleSnapshot ? null : calc.s} div={div} step={calc.step} price={v.price} hl={hl} setHl={setHl} />
             ))}
           </div>
 
@@ -220,8 +230,8 @@ function Fx({ name, f, v, hot }: { name: string; f: string; v: string; hot?: boo
 }
 
 // ---------- Hero ----------
-function Hero({ name, r, s, price, def, src, weekLabel, curClose, curWhen, onPrice, onUseCurrent, onReset }: {
-  name: string; r: WeeklyResult; s: Signal | null; price: number; def: number; src: PriceSrc; weekLabel: string; curClose: number; curWhen: string;
+function Hero({ stale, name, r, s, price, def, src, weekLabel, curClose, curWhen, onPrice, onUseCurrent, onReset }: {
+  stale: boolean; name: string; r: WeeklyResult; s: Signal | null; price: number; def: number; src: PriceSrc; weekLabel: string; curClose: number; curWhen: string;
   onPrice: (p: number) => void; onUseCurrent: () => void; onReset: () => void;
 }) {
   const [text, setText] = useState<string | null>(null);
@@ -229,8 +239,8 @@ function Hero({ name, r, s, price, def, src, weekLabel, curClose, curWhen, onPri
   // The current close keeps its name even on the day it equals last week's close (e.g. Mondays).
   const isCur = src === 'current' && Number.isFinite(curClose) && Math.abs(price - curClose) < 0.005;
   const kind = isCur ? 'Current close' : isDef ? 'Previous week close' : 'What-if price';
-  const up = s?.bias === 'bullish', dn = s?.bias === 'bearish';
-  const nt = s?.nextTarget ?? null;
+  const up = !stale && s?.bias === 'bullish', dn = !stale && s?.bias === 'bearish';
+  const nt = stale ? null : s?.nextTarget ?? null;
   const span = nt ? Math.abs(nt.price - r.avg) : 0;
   const done = nt && span ? clamp(1 - Math.abs(nt.distance) / span, 0, 1) : 0;
   const ring = 2 * Math.PI * 34;
@@ -266,7 +276,13 @@ function Hero({ name, r, s, price, def, src, weekLabel, curClose, curWhen, onPri
       </div>
 
       <div className={clsx('grid content-start gap-2 border-t border-line p-5 sm:p-6 lg:border-l lg:border-t-0', up ? 'bg-up/10' : dn ? 'bg-down/10' : 'bg-muted')} aria-live="polite">
-        {s ? (
+        {stale ? (
+          <>
+            <span className="justify-self-start rounded-full bg-surface px-2.5 py-1 text-xs font-bold text-warn">Old snapshot</span>
+            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">No call for this week</h2>
+            <p className="max-w-md text-sm text-sub">These levels come from {weekLabel || 'a past week'}. The pivot for that week was <b className="num text-fg">{fmt(r.avg)}</b>. Enter last week's numbers in Edit inputs to get this week's side.</p>
+          </>
+        ) : s ? (
           <>
             <span className={clsx('justify-self-start rounded-full bg-surface px-2.5 py-1 text-xs font-bold', up ? 'text-up' : dn ? 'text-down' : 'text-sub')}>
               {up ? '▲ Above the pivot' : dn ? '▼ Below the pivot' : 'On the pivot'}
@@ -296,7 +312,7 @@ function Hero({ name, r, s, price, def, src, weekLabel, curClose, curWhen, onPri
               <span className="text-sm"><b className="num">{fmt(Math.abs(nt.distance))}</b> pts to go</span>
             </>
           ) : (
-            <span className="text-sm text-sub">{s ? 'Every target on this side is passed. Try a larger step.' : '—'}</span>
+            <span className="text-sm text-sub">{stale ? 'No target is picked from an old snapshot.' : s ? 'Every target on this side is passed. Try a larger step.' : '—'}</span>
           )}
         </div>
         {nt && (
@@ -525,7 +541,7 @@ function TargetList({ side, r, s, div, step, price, hl, setHl }: {
   const active = !!s && ((s.bias === 'bullish' && side === 'up') || (s.bias === 'bearish' && side === 'down'));
   const arr = levels(r, div).filter((l) => l.side === side).sort((a, b) => (side === 'up' ? a.price - b.price : b.price - a.price));
   return (
-    <section className={clsx('card card-pad transition-opacity', s && !active && 'opacity-60')} onPointerLeave={() => setHl(null)}>
+    <section className={clsx('card card-pad', s && !active && 'border-dashed bg-muted/40 shadow-none')} onPointerLeave={() => setHl(null)}>
       <header className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="flex items-center gap-2 text-base font-semibold">
           <span className={side === 'up' ? 'text-up' : 'text-down'}>{side === 'up' ? '▲' : '▼'}</span>

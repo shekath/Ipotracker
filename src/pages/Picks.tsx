@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, History, Info, Radio, Star, Trophy } from 'lucide-react';
 import clsx from 'clsx';
-import { Badge, Bar, BulletList, ScoreRing, Segmented, Stat, scoreTone } from '../components/ui';
+import { Badge, Bar, BulletList, ScoreRing, Segmented, Stat, scoreTone, LoadingCard } from '../components/ui';
 import { TradeLadder } from '../components/charts';
 import { ChangeTag, LiveDot, timeAgo } from '../components/live';
 import { useQuotes, type FeedStatus } from '../lib/live';
@@ -69,7 +69,7 @@ function PickCard({ p, h, market, rank, quote, status, since }: { p: Pick; h: Ho
             {p.idx.slice(0, 2).map((i) => <Badge key={i} tone="neutral">{i}</Badge>)}
           </div>
           <h3 className="mt-1.5 text-lg font-semibold">
-            <Link to={`/stocks/${market}/${encodeURIComponent(p.symbol)}`} className="hover:text-brand-ink">{p.symbol}</Link>
+            <Link to={`/stocks/${market}/${encodeURIComponent(p.symbol)}`} className="hit hover:text-brand-ink">{p.symbol}</Link>
             <span className="ml-2 text-sm font-normal text-sub">{p.name}</span>
           </h3>
           <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -197,7 +197,7 @@ function EarlierPicks({ market, h, cap, entries, current }: { market: Market; h:
             <li key={`${e.symbol}-${e.at}`} className={clsx('grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 py-3', e.status === 'stop' && 'opacity-75')}>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className={clsx('font-semibold hover:text-brand-ink', e.status === 'stop' && 'line-through decoration-down/60')}>{e.symbol}</Link>
+                  <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className={clsx('hit font-semibold hover:text-brand-ink', e.status === 'stop' && 'line-through decoration-down/60')}>{e.symbol}</Link>
                   <span className="truncate text-sm text-sub">{e.name}</span>
                   <Badge tone={meta[e.status].tone}>{meta[e.status].label}</Badge>
                 </div>
@@ -301,7 +301,7 @@ function TrackRecord({ market, h, cap, entries, loading }: { market: Market; h: 
                   return (
                     <tr key={`${e.symbol}-${e.at}`}>
                       <td>
-                        <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className="font-semibold hover:text-brand-ink">{e.symbol}</Link>
+                        <Link to={`/stocks/${market}/${encodeURIComponent(e.symbol)}`} className="hit font-semibold hover:text-brand-ink">{e.symbol}</Link>
                         <span className="block max-w-[11rem] truncate text-xs text-sub" title={e.name}>{e.name}</span>
                       </td>
                       <td>
@@ -384,7 +384,7 @@ export default function Picks() {
       </div>
 
       {loading && !data ? (
-        <div className="card card-pad h-64 animate-pulse" />
+        <LoadingCard className="h-64" label="Loading today's picks…" />
       ) : !data ? (
         <div className="card card-pad flex gap-4">
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-ink"><Info size={18} /></span>

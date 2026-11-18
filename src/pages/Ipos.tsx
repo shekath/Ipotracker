@@ -3,10 +3,11 @@ import { Info, Radio } from 'lucide-react';
 import clsx from 'clsx';
 import { pipeline } from '../data';
 import IpoCard from '../components/IpoCard';
-import { EmptyState, SectionHeader, Segmented } from '../components/ui';
+import { EmptyState, SectionHeader, Segmented, LoadingCard } from '../components/ui';
 import { timeAgo } from '../components/live';
 import { ipoStatus, type IpoStatus } from '../lib/scoring';
 import { useIpoViews } from '../lib/useIpoViews';
+import { retryIpos } from '../lib/live';
 import { getJSON } from '../lib/api';
 
 type Filter = 'All' | IpoStatus;
@@ -70,8 +71,12 @@ export default function Ipos() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {rows.map((i) => <IpoCard key={i.id} ipo={i} />)}
             </div>
+          ) : status === 'loading' ? (
+            <LoadingCard className="py-14" label="Loading IPOs…" />
+          ) : status === 'offline' ? (
+            <EmptyState title="Couldn't reach the IPO feed" body="We couldn't load the latest issues from NSE. Check your connection and try again." action={<button className="btn bg-fg text-bg hover:opacity-90" onClick={retryIpos}>Try again</button>} />
           ) : (
-            <EmptyState title="Nothing here" body="No IPOs match this status." />
+            <EmptyState title="No IPOs here right now" body={filter === 'All' ? 'No issues are open, upcoming or recently closed on this board.' : 'No IPOs match this status.'} />
           )}
         </div>
       </div>

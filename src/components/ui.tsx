@@ -116,3 +116,23 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
     </div>
   );
 }
+
+/** A placeholder that says what is loading, so a slow load never reads as "nothing here". */
+export function LoadingCard({ label, className }: { label: string; className?: string }) {
+  return (
+    <div role="status" aria-live="polite" className={clsx('card card-pad flex flex-col items-center justify-center gap-3 text-center', className)}>
+      <span className="h-5 w-5 animate-spin rounded-full border-2 border-line border-t-brand-ink motion-reduce:animate-none" aria-hidden="true" />
+      <span className="text-sm font-medium text-sub">{label}</span>
+    </div>
+  );
+}
+
+/** A notice for data that is older than it should be, shown at the top of the content it describes. */
+export function StaleBanner({ children }: { children: ReactNode }) {
+  return (
+    <div role="status" className="flex items-start gap-2 rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
+      <span aria-hidden="true" className="mt-0.5 font-bold">!</span>
+      <span>{children}</span>
+    </div>
+  );
+}

@@ -4,7 +4,7 @@ import { LayoutGrid, List, Search, Star } from 'lucide-react';
 import clsx from 'clsx';
 import { stocks, sectorsFor, STOCK_SNAPSHOT } from '../data';
 import StockCard, { WatchButton, flag } from '../components/StockCard';
-import { Badge, EmptyState, ScoreRing, Segmented } from '../components/ui';
+import { Badge, EmptyState, ScoreRing, Segmented, StaleBanner } from '../components/ui';
 import { change, fmtMcap, fmtPrice, pct } from '../lib/format';
 import { overallScore, ratingTone } from '../lib/scoring';
 import { useWatchlist } from '../lib/watchlist';
@@ -94,6 +94,7 @@ function ReportsView() {
           <Segmented value={market} onChange={(v) => set('market', v)} options={marketTabs} />
         </div>
       </div>
+      {status === 'offline' && <div className="mb-6"><StaleBanner>Live prices are unavailable. These prices are from the <b>{STOCK_SNAPSHOT}</b> research snapshot, not today's market.</StaleBanner></div>}
 
       <div className="card mb-6 space-y-4 p-4 sm:p-5">
         <div className="flex flex-col gap-3 md:flex-row">

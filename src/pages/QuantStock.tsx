@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import clsx from 'clsx';
-import { Badge, BulletList, ScoreRing, SectionHeader, Segmented, Stat } from '../components/ui';
+import { Badge, BulletList, ScoreRing, SectionHeader, Segmented, Stat, LoadingCard } from '../components/ui';
 import { TradeLadder } from '../components/charts';
 import { ChangeTag, LiveDot, PriceChart, timeAgo } from '../components/live';
 import { WatchButton, flag } from '../components/StockCard';
@@ -49,7 +49,7 @@ export default function QuantStock({ market, symbol }: { market: Market; symbol:
   const [h, setH] = useState<Horizon | null>(null);
   const cur = market === 'IN' ? '₹' : '$';
 
-  if (loading) return <div className="card card-pad mt-6 h-72 animate-pulse" />;
+  if (loading) return <LoadingCard className="mt-6 h-72" label="Loading this stock's research…" />;
   if (missing || !r) return <NotFound />;
 
   const avail = (Object.keys(r.picks ?? {}) as Horizon[]).sort((a, b) => ['st', 'lt', 'sw'].indexOf(a) - ['st', 'lt', 'sw'].indexOf(b));

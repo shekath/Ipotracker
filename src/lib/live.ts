@@ -186,6 +186,14 @@ async function pollIpos() {
   ipoTimer = setTimeout(pollIpos, ipoState.status === 'offline' ? IPO_POLL_MS * 3 : IPO_POLL_MS);
 }
 
+/** Try the IPO feed again now, showing the loading state until it answers. */
+export function retryIpos() {
+  ipoState.status = 'loading';
+  ipoState.version++;
+  ipoListeners.forEach((l) => l());
+  pollIpos();
+}
+
 export function useLiveIpos() {
   useEffect(() => {
     if (!ipoStarted) {

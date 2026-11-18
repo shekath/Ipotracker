@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ExternalLink, Info, Search } from 'lucide-react';
 import clsx from 'clsx';
 import { stocks } from '../data';
-import { Badge, EmptyState, Segmented } from '../components/ui';
+import { Badge, EmptyState, Segmented, LoadingCard } from '../components/ui';
 import { timeAgo } from '../components/live';
 import { useIndexDefs, useScreener } from '../lib/screener';
 import { useMarketPref } from '../lib/marketPref';
@@ -126,6 +126,8 @@ export default function Screener() {
   const { data, loading, offline } = useScreener(def);
 
   const [q, setQ] = useState('');
+  // The field updates on every key; the 5,000-row filter runs on the deferred value, so typing never waits on it.
+  const dq = useDeferredValue(q);
   const [industry, setIndustry] = useState('All');
   const [preset, setPreset] = useState<Preset>('all');
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'mcap', dir: -1 });
@@ -161,6 +163,7 @@ export default function Screener() {
         fromHigh: r.price != null && r.high52 ? ((r.price - r.high52) / r.high52) * 100 : undefined,
         fromLow: r.price != null && r.low52 ? ((r.price - r.low52) / r.low52) * 100 : undefined,
         research: r.exchange === 'BSE' ? undefined : covered.get(`${market}:${r.symbol}`),
+        hay: `${r.symbol} ${r.name}`.toLowerCase(),
       })),
     [data, covered, market],
   );
@@ -168,14 +171,14 @@ export default function Screener() {
   const industries = useMemo(() => ['All', ...Array.from(new Set(enriched.map((r) => r.industry).filter(Boolean) as string[])).sort()], [enriched]);
 
   const rows = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = dq.trim().toLowerCase();
     const test = presets.find((p) => p.value === preset)!.test;
     const r = enriched.filter(
       (x) =>
         (industry === 'All' || x.industry === industry) &&
         (preset !== 'covered' || x.research) &&
         test(x) &&
-        (!needle || x.symbol.toLowerCase().includes(needle) || x.name.toLowerCase().includes(needle)),
+        (!needle || x.hay.includes(needle)),
     );
     const key = preset === 'gainers' ? { key: 'changePct' as SortKey, dir: -1 } : preset === 'losers' ? { key: 'changePct' as SortKey, dir: 1 } : sort;
     return r.sort((a, b) => {
@@ -187,12 +190,12 @@ export default function Screener() {
       if (bv == null) return -1;
       return (av - bv) * key.dir;
     });
-  }, [enriched, industry, preset, q, sort]);
+  }, [enriched, industry, preset, dq, sort]);
 
   // Back to page 1 whenever the list itself changes.
   useEffect(() => {
     setPage(1);
-  }, [def?.id, q, industry, preset, sort]);
+  }, [def?.id, dq, industry, preset, sort]);
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
   const current = Math.min(page, pageCount);
   const offset = (current - 1) * pageSize;
@@ -302,7 +305,7 @@ export default function Screener() {
       </div>
 
       {loading && !data ? (
-        <div className="card h-96 animate-pulse" />
+        <LoadingCard className="h-96" label="Loading stocks…" />
       ) : def && data && data.rows.length === 0 ? (
         <EmptyState title="Member list unavailable" body="This index’s constituents load live from NSE Indices, which is unreachable right now. Try again later or pick another index." />
       ) : rows.length === 0 ? (

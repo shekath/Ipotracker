@@ -55,6 +55,24 @@ export function Logo() {
   );
 }
 
+const TITLES: Record<string, string> = {
+  '/': 'Dashboard',
+  '/picks': 'High-conviction picks',
+  '/stocks': 'Stock research',
+  '/screener': 'Index screener',
+  '/ipo': 'IPO desk',
+  '/weekly-targets': 'Weekly index targets',
+};
+
+/** A browser-tab title that names the page: "Picks · MarketLens", "TCS · Stock research · MarketLens". */
+export function pageTitle(pathname: string): string {
+  const parts = pathname.split('/').filter(Boolean).map((p) => decodeURIComponent(p));
+  let name = TITLES[pathname];
+  if (!name && parts[0] === 'stocks' && parts[2]) name = `${parts[2].toUpperCase()} · Stock research`;
+  if (!name && parts[0] === 'ipo' && parts[1]) name = `${parts[1].replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} · IPO`;
+  return `${name ?? 'Page not found'} · MarketLens`;
+}
+
 export default function Layout() {
   const { pathname, search } = useLocation();
   // Braces matter: newer browsers make scrollTo() return a Promise, and an effect
@@ -63,6 +81,8 @@ export default function Layout() {
     window.scrollTo({ top: 0 });
   }, [pathname]);
   useEffect(() => {
+    // Title first, so the page view below reports this page's own title.
+    document.title = pageTitle(pathname);
     trackPageView(pathname + search);
   }, [pathname, search]);
 

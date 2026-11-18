@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search, SlidersHorizontal, Star } from 'lucide-react';
 import clsx from 'clsx';
 import { stocks } from '../data';
-import { Badge, EmptyState, Segmented } from '../components/ui';
+import { Badge, EmptyState, Segmented, LoadingCard } from '../components/ui';
 import { WatchButton } from '../components/StockCard';
 import { marketTabs } from '../components/Flag';
 import { fmtPrice, pct } from '../lib/format';
@@ -185,7 +185,7 @@ export default function UniverseView() {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-sm text-sub">
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span><span className="font-semibold text-fg">{filtered.length.toLocaleString('en-IN')}</span> results{data?.building ? ` · research still building (${data.coverage.history}/${data.universe})` : ''}</span>
+            <span>{!data ? 'Loading stocks…' : <><span className="font-semibold text-fg">{filtered.length.toLocaleString('en-IN')}</span> results</>}{data?.building ? ` · research still building (${data.coverage.history}/${data.universe})` : ''}</span>
             {active > 0 && <button className="font-medium text-brand-ink hover:underline" onClick={() => {
               const next = new URLSearchParams();
               for (const k of ['sort', 'dir']) if (params.get(k)) next.set(k, params.get(k)!);
@@ -197,7 +197,7 @@ export default function UniverseView() {
       </div>
 
       {!data ? (
-        <div className="card h-96 animate-pulse" />
+        <LoadingCard className="h-96" label="Loading the full-market research…" />
       ) : !filtered.length ? (
         <EmptyState title="No stocks match" body="Try clearing a filter or searching for something else." action={<button className="btn-ghost border border-line" onClick={() => setParams({})}>Reset filters</button>} />
       ) : (

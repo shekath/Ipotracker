@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Info, Radio } from 'lucide-react';
 import { IPO_SNAPSHOT } from '../data';
-import { Badge, Bar, BulletList, ScoreRing, SectionHeader, Stat, scoreTone } from '../components/ui';
+import { Badge, Bar, BulletList, ScoreRing, SectionHeader, Stat, scoreTone, LoadingCard } from '../components/ui';
 import { IpoFinChart } from '../components/charts';
 import { GmpChart, SubscriptionPanel, TimelineSteps, timeAgo } from '../components/live';
 import { gmpPct, minInvestment, statusTone } from '../components/IpoCard';
@@ -17,7 +17,7 @@ export default function IpoDetail() {
   const { views, status: feedStatus } = useIpoViews();
   const ipo = views.find((i) => i.id === id);
   if (!ipo) {
-    if (feedStatus === 'loading') return <div className="card card-pad mt-6 h-64 animate-pulse" />;
+    if (feedStatus === 'loading') return <LoadingCard className="mt-6 h-64" label="Loading this IPO…" />;
     return <NotFound />;
   }
 
