@@ -3,3 +3,7 @@ dist
 *.tsbuildinfo
 .DS_Store
 marketlens-hostinger.zip
+
+# UI review captures (screenshots and accessibility trees) stay local; the report and measurements are committed
+.ui-review/**/*.png
+.ui-review/**/*.aria.yml

@@ -1,0 +1,57 @@
+{
+ "keyboardPicks": [
+  "a \"MarketLens\" outline=solid/2px shadow=n y=16",
+  "a \"Dashboard\" outline=solid/2px shadow=n y=14",
+  "a \"Picks\" outline=solid/2px shadow=n y=14",
+  "a \"Stocks\" outline=solid/2px shadow=n y=14",
+  "a \"Screener\" outline=solid/2px shadow=n y=14",
+  "a \"IPOs\" outline=solid/2px shadow=n y=14",
+  "a \"Weekly targetsWeekly index targets\" outline=solid/2px shadow=n y=14",
+  "button[radio] \"Light\" outline=solid/2px shadow=n y=19",
+  "button[radio] \"System\" outline=solid/2px shadow=y y=19",
+  "button[radio] \"Dark\" outline=solid/2px shadow=n y=19",
+  "button[tab] \"India India\" outline=solid/3px shadow=y y=138",
+  "button[tab] \"United States US\" outline=solid/3px shadow=n y=138",
+  "button[tab] \"TodayToday's picks12\" outline=solid/2px shadow=n y=263",
+  "button[tab] \"EarlierEarlier32\" outline=solid/2px shadow=n y=263",
+  "button[tab] \"RecordTrack record75\" outline=solid/2px shadow=n y=263",
+  "button[tab] \"Short term (12)\" outline=solid/3px shadow=y y=338",
+  "button[tab] \"Long term (12)\" outline=solid/3px shadow=n y=338",
+  "button[tab] \"Swing (0)\" outline=solid/3px shadow=n y=338"
+ ],
+ "skipLink": "a \"MarketLens\" outline=solid/2px shadow=n y=16",
+ "press /picks role=tab[name=/Earlier/]": "pointerdown:24ms pointerup:24ms click:24ms",
+ "press /picks role=button[name=/Long term/]": "control not found",
+ "press /stocks role=button[name=/^Price/]": "control not found",
+ "press /weekly-targets role=tab[name=\"Bank Nifty\"]": "pointerdown:24ms pointerup:24ms click:24ms",
+ "press /screener role=button[name=\"NSE SME\"]": "pointerdown:32ms pointerup:32ms click:32ms",
+ "throttledScreenerRowsMs": 1377,
+ "throttledScreenerTyping": "max 192ms over 17 events",
+ "touch": {
+  "coarse": true,
+  "inputs": [
+   "input \"Search company or symbol…\" 14px",
+   "select \"Screen\" 14px",
+   "select \"Industry\" 14px",
+   "select \"Rows per page\" 14px"
+  ],
+  "header": [
+   "\"Light\" 44x44",
+   "\"System\" 44x44",
+   "\"Dark\" 44x44"
+  ],
+  "tabbar": [
+   "Dashboard 78x56",
+   "Picks 78x56",
+   "Stocks 78x56",
+   "IPOs 78x56",
+   "Targets 78x56"
+  ]
+ },
+ "titles": {
+  "/": "MarketLens · Stocks & IPO Research",
+  "/picks": "MarketLens · Stocks & IPO Research",
+  "/stocks/IN/TCS": "MarketLens · Stocks & IPO Research",
+  "/ipo": "MarketLens · Stocks & IPO Research"
+ }
+}
